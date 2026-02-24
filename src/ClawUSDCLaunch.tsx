@@ -483,7 +483,7 @@ const Scene1: React.FC = () => {
         <div style={{ marginTop: 16 }} />
         <Line text="[READY] All systems operational" delay={58} color={PHOSPHOR_BRIGHT} fontSize={18} />
         <Line text="[READY] Contract: 0xb34F...2B4d (Base)" delay={62} color={PHOSPHOR} fontSize={16} />
-        <Line text="[READY] Strategy: Beefy → Morpho → Steakhouse" delay={66} color={PHOSPHOR} fontSize={16} />
+        <Line text="[READY] Strategy: Beefy → Morpho → Steakhouse Financial" delay={66} color={PHOSPHOR} fontSize={16} />
         <Line text="[READY] Current APY: 4.12%" delay={70} color={PHOSPHOR} fontSize={16} />
 
         <div style={{ marginTop: 20 }} />
@@ -655,85 +655,195 @@ const Scene3: React.FC = () => {
 const Scene4: React.FC = () => {
   const frame = useCurrentFrame();
 
-  const flow = [
-    { text: "                    ┌──────────┐", d: 8 },
-    { text: "                    │   USDC   │", d: 8 },
-    { text: "                    │ (agent)  │", d: 8 },
-    { text: "                    └────┬─────┘", d: 8 },
-    { text: "                         │", d: 12 },
-    { text: "                    deposit()", d: 13, c: DIM },
-    { text: "                         │", d: 15 },
-    { text: "                         ▼", d: 16 },
-    { text: "                  ┌────────────┐", d: 18 },
-    { text: "                  │  clawUSDC  │──── ERC-4626 vault", d: 18, c2: DIM },
-    { text: "                  │  on Base   │     you hold shares", d: 18, c2: DIM },
-    { text: "                  └─────┬──────┘", d: 18 },
-    { text: "                        │", d: 24 },
-    { text: "                   autoDeposit()", d: 25, c: DIM },
-    { text: "                        │", d: 27 },
-    { text: "                        ▼", d: 28 },
-    { text: "                  ┌────────────┐", d: 30 },
-    { text: "                  │   Beefy    │──── yield optimizer", d: 30, c2: DIM },
-    { text: "                  │  mooVault  │     auto-compounds", d: 30, c2: DIM },
-    { text: "                  └─────┬──────┘", d: 30 },
-    { text: "                        │", d: 36 },
-    { text: "                    supply()", d: 37, c: DIM },
-    { text: "                        │", d: 39 },
-    { text: "                        ▼", d: 40 },
-    { text: "                  ┌────────────┐", d: 42 },
-    { text: "                  │  Morpho    │──── lending market", d: 42, c2: DIM },
-    { text: "                  │  Blue      │     isolated risk", d: 42, c2: DIM },
-    { text: "                  └─────┬──────┘", d: 42 },
-    { text: "                        │", d: 48 },
-    { text: "                   curate()", d: 49, c: DIM },
-    { text: "                        │", d: 51 },
-    { text: "                        ▼", d: 52 },
-    { text: "                  ┌────────────┐", d: 54 },
-    { text: "                  │ Steakhouse │──── risk curator", d: 54, c2: DIM },
-    { text: "                  │   vault    │     manages params", d: 54, c2: DIM },
-    { text: "                  └────────────┘", d: 54 },
+  // Proper SVG flow diagram — boxes with connecting lines and labels
+  // All positioned on a 1080x1080 canvas
+  const nodes = [
+    { label: "Your Agent", sub: "USDC balance", y: 100, color: WHITE, delay: 6 },
+    { label: "clawUSDC", sub: "ERC-4626 vault on Base", y: 260, color: AMBER, delay: 14 },
+    { label: "Beefy Finance", sub: "yield optimizer / auto-compounder", y: 420, color: "#59A662", delay: 22 },
+    { label: "Morpho Blue", sub: "isolated lending market", y: 580, color: "#818cf8", delay: 30 },
+    { label: "Steakhouse Financial", sub: "risk curator / vault manager", y: 740, color: "#f97316", delay: 38 },
   ];
+
+  const calls = [
+    { label: "deposit()", y: 180, delay: 10 },
+    { label: "autoDeposit()", y: 340, delay: 18 },
+    { label: "supply()", y: 500, delay: 26 },
+    { label: "curate()", y: 660, delay: 34 },
+  ];
+
+  const cx = 440; // center x for the flow
+  const boxW = 360;
+  const boxH = 80;
 
   return (
     <CRT>
-      <div style={{ padding: "40px 40px", display: "flex", flexDirection: "column", position: "relative", zIndex: 10 }}>
+      <div style={{ padding: "30px 40px", position: "relative", zIndex: 10 }}>
         <Line text="GOLDBOT SACHS — VAULT ARCHITECTURE" delay={0} color={AMBER} fontSize={16} />
-        <Line text="════════════════════════════════════════════════" delay={2} color={DIM} fontSize={15} />
+        <Line text="════════════════════════════════════════════════════" delay={2} color={DIM} fontSize={15} />
+      </div>
 
-        <div style={{ marginTop: 8 }}>
-          {flow.map((line, i) => {
-            const lineColor = line.c || PHOSPHOR;
-            // Split at ──── for two-tone lines
-            const parts = line.text.split("────");
-            if (parts.length > 1 && line.c2) {
-              const opacity = interpolate(frame, [line.d, line.d + 2], [0, 1], clamp);
-              return (
-                <div key={i} style={{ opacity, fontFamily: mono, fontSize: 15, lineHeight: 1.4, whiteSpace: "pre" }}>
-                  <span style={{ color: PHOSPHOR, textShadow: `0 0 6px ${PHOSPHOR}` }}>
-                    {parts[0]}────
-                  </span>
-                  <span style={{ color: line.c2, textShadow: `0 0 4px ${line.c2}` }}>
-                    {parts.slice(1).join("────")}
-                  </span>
-                </div>
-              );
-            }
-            return (
-              <Line
-                key={i}
-                text={line.text}
-                delay={line.d}
-                color={lineColor}
-                fontSize={15}
-                glow={lineColor !== DIM}
+      {/* SVG diagram */}
+      <svg
+        style={{ position: "absolute", top: 60, left: 0, width: 1080, height: 920, zIndex: 10 }}
+        viewBox="0 0 1080 920"
+      >
+        {/* Connecting lines */}
+        {nodes.slice(0, -1).map((node, i) => {
+          const progress = interpolate(frame, [node.delay + 6, node.delay + 12], [0, 1], clamp);
+          const y1 = node.y + boxH;
+          const y2 = nodes[i + 1].y;
+          const lineEnd = y1 + (y2 - y1) * progress;
+          return (
+            <g key={`line-${i}`}>
+              <line
+                x1={cx}
+                y1={y1}
+                x2={cx}
+                y2={lineEnd}
+                stroke={PHOSPHOR_DIM}
+                strokeWidth={2}
+                opacity={0.6}
               />
-            );
-          })}
-        </div>
+              {/* Arrow head */}
+              {progress > 0.9 && (
+                <polygon
+                  points={`${cx},${y2} ${cx - 6},${y2 - 10} ${cx + 6},${y2 - 10}`}
+                  fill={PHOSPHOR_DIM}
+                  opacity={interpolate(frame, [node.delay + 11, node.delay + 13], [0, 0.6], clamp)}
+                />
+              )}
+            </g>
+          );
+        })}
 
-        <div style={{ marginTop: 12 }} />
-        <Line text="  ↑ yield autocompounds — no action needed" delay={62} color={PHOSPHOR_BRIGHT} fontSize={16} />
-        <Line text="  ↑ Beefy harvests + reinvests automatically" delay={66} color={PHOSPHOR_DIM} fontSize={15} />
+        {/* Function call labels */}
+        {calls.map((call, i) => {
+          const opacity = interpolate(frame, [call.delay, call.delay + 4], [0, 1], clamp);
+          return (
+            <text
+              key={`call-${i}`}
+              x={cx + boxW / 2 + 20}
+              y={call.y + 10}
+              fontFamily={mono}
+              fontSize={14}
+              fill={DIM}
+              opacity={opacity}
+            >
+              {call.label}
+            </text>
+          );
+        })}
+
+        {/* Nodes — boxes with labels */}
+        {nodes.map((node, i) => {
+          const scale = spring({ frame, fps: 30, delay: node.delay, config: { damping: 200 } });
+          const opacity = interpolate(frame, [node.delay, node.delay + 3], [0, 1], clamp);
+          return (
+            <g
+              key={`node-${i}`}
+              opacity={opacity}
+              transform={`translate(${cx}, ${node.y + boxH / 2}) scale(${scale}) translate(${-cx}, ${-(node.y + boxH / 2)})`}
+            >
+              {/* Box */}
+              <rect
+                x={cx - boxW / 2}
+                y={node.y}
+                width={boxW}
+                height={boxH}
+                rx={6}
+                fill="none"
+                stroke={node.color}
+                strokeWidth={1.5}
+                opacity={0.8}
+              />
+              {/* Glow rect */}
+              <rect
+                x={cx - boxW / 2}
+                y={node.y}
+                width={boxW}
+                height={boxH}
+                rx={6}
+                fill={node.color}
+                opacity={0.05}
+              />
+              {/* Label */}
+              <text
+                x={cx}
+                y={node.y + 32}
+                textAnchor="middle"
+                fontFamily={mono}
+                fontSize={20}
+                fontWeight="bold"
+                fill={node.color}
+              >
+                {node.label}
+              </text>
+              {/* Sub label */}
+              <text
+                x={cx}
+                y={node.y + 56}
+                textAnchor="middle"
+                fontFamily={mono}
+                fontSize={13}
+                fill={DIM}
+              >
+                {node.sub}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Return arrow — yield flowing back up on the right */}
+        {(() => {
+          const returnDelay = 46;
+          const progress = interpolate(frame, [returnDelay, returnDelay + 25], [0, 1], {
+            ...clamp,
+            easing: Easing.inOut(Easing.quad),
+          });
+          const opacity = interpolate(frame, [returnDelay, returnDelay + 5], [0, 0.7], clamp);
+          const rightX = cx + boxW / 2 + 50;
+          // Dashed line going from bottom to top
+          const topY = 140;
+          const bottomY = 780;
+          const currentY = bottomY - (bottomY - topY) * progress;
+
+          return (
+            <g opacity={opacity}>
+              <line
+                x1={rightX}
+                y1={bottomY}
+                x2={rightX}
+                y2={currentY}
+                stroke={PHOSPHOR_BRIGHT}
+                strokeWidth={2}
+                strokeDasharray="6 4"
+              />
+              {progress > 0.9 && (
+                <polygon
+                  points={`${rightX},${topY} ${rightX - 6},${topY + 10} ${rightX + 6},${topY + 10}`}
+                  fill={PHOSPHOR_BRIGHT}
+                />
+              )}
+              {/* Label */}
+              <text
+                x={rightX + 14}
+                y={460}
+                fontFamily={mono}
+                fontSize={14}
+                fill={PHOSPHOR_BRIGHT}
+                transform={`rotate(-90, ${rightX + 14}, 460)`}
+              >
+                yield autocompounds back
+              </text>
+            </g>
+          );
+        })()}
+      </svg>
+
+      {/* Bottom note */}
+      <div style={{ position: "absolute", bottom: 50, left: 60, zIndex: 10 }}>
+        <Line text="Beefy harvests and reinvests automatically. No user action needed." delay={50} color={PHOSPHOR_DIM} fontSize={15} />
       </div>
     </CRT>
   );
@@ -788,65 +898,178 @@ const Scene5: React.FC = () => {
 };
 
 // ─── SCENE 6: REFERRALS ──────────────────────────────
+
+// SVG node for referral network
+const RefNode: React.FC<{
+  x: number;
+  y: number;
+  r: number;
+  label: string;
+  color: string;
+  delay: number;
+  glow?: boolean;
+}> = ({ x, y, r, label, color, delay, glow = false }) => {
+  const frame = useCurrentFrame();
+  const scale = spring({ frame, fps: 30, delay, config: { damping: 15, stiffness: 200 } });
+  const opacity = interpolate(frame, [delay, delay + 3], [0, 1], clamp);
+
+  return (
+    <g opacity={opacity} transform={`translate(${x},${y}) scale(${scale}) translate(${-x},${-y})`}>
+      {/* Glow */}
+      {glow && (
+        <circle cx={x} cy={y} r={r + 8} fill={color} opacity={0.15} />
+      )}
+      <circle cx={x} cy={y} r={r} fill="none" stroke={color} strokeWidth={2} />
+      <circle cx={x} cy={y} r={r} fill={color} opacity={0.1} />
+      <text
+        x={x}
+        y={y + 5}
+        textAnchor="middle"
+        fontFamily={mono}
+        fontSize={r > 30 ? 14 : 11}
+        fill={color}
+        fontWeight="bold"
+      >
+        {label}
+      </text>
+    </g>
+  );
+};
+
+// SVG edge with animated draw
+const RefEdge: React.FC<{
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  delay: number;
+  label?: string;
+  color?: string;
+}> = ({ x1, y1, x2, y2, delay, label, color = PHOSPHOR_DIM }) => {
+  const frame = useCurrentFrame();
+  const progress = interpolate(frame, [delay, delay + 10], [0, 1], {
+    ...clamp,
+    easing: Easing.out(Easing.quad),
+  });
+  const opacity = interpolate(frame, [delay, delay + 3], [0, 0.6], clamp);
+
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  const endX = x1 + dx * progress;
+  const endY = y1 + dy * progress;
+  const midX = (x1 + x2) / 2;
+  const midY = (y1 + y2) / 2;
+  const labelOpacity = interpolate(frame, [delay + 8, delay + 12], [0, 1], clamp);
+
+  return (
+    <g>
+      <line x1={x1} y1={y1} x2={endX} y2={endY} stroke={color} strokeWidth={1.5} opacity={opacity} />
+      {label && (
+        <text
+          x={midX + 8}
+          y={midY - 4}
+          fontFamily={mono}
+          fontSize={11}
+          fill={PHOSPHOR_BRIGHT}
+          opacity={labelOpacity}
+        >
+          {label}
+        </text>
+      )}
+    </g>
+  );
+};
+
 const Scene6: React.FC = () => {
   const frame = useCurrentFrame();
 
-  const tree = [
-    { text: "  ┌─ REFERRAL NETWORK ──────────────────────────┐", d: 5 },
-    { text: "  │                                              │", d: 5 },
-    { text: "  │              ┌─────────┐                     │", d: 8 },
-    { text: "  │              │   YOU   │                     │", d: 8, c: AMBER },
-    { text: "  │              └────┬────┘                     │", d: 8 },
-    { text: "  │         ┌────────┼────────┐                  │", d: 14 },
-    { text: "  │         ▼        ▼        ▼                  │", d: 16 },
-    { text: "  │      [Bot A]  [Bot B]  [Bot C]               │", d: 18 },
-    { text: "  │      5% ↑     5% ↑     5% ↑     to you      │", d: 22, c: PHOSPHOR_BRIGHT },
-    { text: "  │       ┌┴┐     ┌┴┐     ┌┴┐                   │", d: 26 },
-    { text: "  │       ▼ ▼     ▼ ▼     ▼ ▼                   │", d: 28 },
-    { text: "  │      [.][.]  [.][.]  [.][.]                  │", d: 30 },
-    { text: "  │      5% ↑    5% ↑    5% ↑    cascading      │", d: 34, c: PHOSPHOR_DIM },
-    { text: "  │       ┌┴┐    ┌┴┐    ┌┴┐                     │", d: 38 },
-    { text: "  │       ▼ ▼    ▼ ▼    ▼ ▼     ∞ depth         │", d: 40, c: DIM },
-    { text: "  │                                              │", d: 5 },
-    { text: "  └──────────────────────────────────────────────┘", d: 5 },
+  const cx = 440;
+  // Tree layout — center node, ring 1 (3 nodes), ring 2 (6 nodes), ring 3 (12 nodes)
+  const you = { x: cx, y: 200 };
+  const ring1 = [
+    { x: cx - 200, y: 340, label: "Agent A", delay: 12 },
+    { x: cx, y: 360, label: "Agent B", delay: 15 },
+    { x: cx + 200, y: 340, label: "Agent C", delay: 18 },
   ];
+  const ring2 = [
+    { x: cx - 310, y: 490, label: "D", delay: 26 },
+    { x: cx - 140, y: 500, label: "E", delay: 28 },
+    { x: cx - 60, y: 510, label: "F", delay: 30 },
+    { x: cx + 60, y: 510, label: "G", delay: 32 },
+    { x: cx + 140, y: 500, label: "H", delay: 34 },
+    { x: cx + 310, y: 490, label: "I", delay: 36 },
+  ];
+  const ring3Delay = 42;
+  const ring3: { x: number; y: number; delay: number }[] = [];
+  for (let i = 0; i < 12; i++) {
+    const spread = 700;
+    const x = cx - spread / 2 + (i / 11) * spread;
+    const y = 640 + Math.sin(i * 0.8) * 20;
+    ring3.push({ x, y, delay: ring3Delay + i * 1.5 });
+  }
 
   return (
     <CRT>
-      <div style={{ padding: "50px 60px", display: "flex", flexDirection: "column", position: "relative", zIndex: 10 }}>
+      <div style={{ padding: "30px 40px", position: "relative", zIndex: 10 }}>
         <Line text="GOLDBOT SACHS — DISTRIBUTION ENGINE" delay={0} color={AMBER} fontSize={16} />
-        <Line text="════════════════════════════════════════════════" delay={2} color={DIM} fontSize={15} />
+        <Line text="════════════════════════════════════════════════════" delay={2} color={DIM} fontSize={15} />
+      </div>
 
-        <div style={{ marginTop: 12 }}>
-          {tree.map((line, i) => (
-            <Line
-              key={i}
-              text={line.text}
-              delay={line.d}
-              color={line.c || PHOSPHOR}
-              fontSize={16}
-              glow={!!line.c}
-            />
-          ))}
-        </div>
+      {/* SVG network graph */}
+      <svg
+        style={{ position: "absolute", top: 50, left: 0, width: 1080, height: 700, zIndex: 10 }}
+        viewBox="0 0 1080 700"
+      >
+        {/* Edges: you → ring1 */}
+        {ring1.map((n, i) => (
+          <RefEdge key={`e1-${i}`} x1={you.x} y1={you.y + 36} x2={n.x} y2={n.y - 28} delay={n.delay - 3} label="5%" />
+        ))}
+        {/* Edges: ring1 → ring2 */}
+        <RefEdge x1={ring1[0].x} y1={ring1[0].y + 28} x2={ring2[0].x} y2={ring2[0].y - 20} delay={24} label="5%" />
+        <RefEdge x1={ring1[0].x} y1={ring1[0].y + 28} x2={ring2[1].x} y2={ring2[1].y - 20} delay={26} />
+        <RefEdge x1={ring1[1].x} y1={ring1[1].y + 28} x2={ring2[2].x} y2={ring2[2].y - 20} delay={28} />
+        <RefEdge x1={ring1[1].x} y1={ring1[1].y + 28} x2={ring2[3].x} y2={ring2[3].y - 20} delay={30} />
+        <RefEdge x1={ring1[2].x} y1={ring1[2].y + 28} x2={ring2[4].x} y2={ring2[4].y - 20} delay={32} />
+        <RefEdge x1={ring1[2].x} y1={ring1[2].y + 28} x2={ring2[5].x} y2={ring2[5].y - 20} delay={34} />
+        {/* Edges: ring2 → ring3 */}
+        {ring2.map((n, i) => {
+          const targets = [ring3[i * 2], ring3[i * 2 + 1]];
+          return targets.map((t, j) => (
+            <RefEdge key={`e3-${i}-${j}`} x1={n.x} y1={n.y + 20} x2={t.x} y2={t.y - 16} delay={t.delay - 2} color={DIM} />
+          ));
+        })}
 
-        <div style={{ marginTop: 20 }} />
-        <Line text="  HOW IT WORKS:" delay={44} color={AMBER} fontSize={17} />
+        {/* You node */}
+        <RefNode x={you.x} y={you.y} r={36} label="YOU" color={AMBER} delay={5} glow />
+
+        {/* Ring 1 */}
+        {ring1.map((n, i) => (
+          <RefNode key={`r1-${i}`} x={n.x} y={n.y} r={28} label={n.label} color={PHOSPHOR} delay={n.delay} />
+        ))}
+        {/* Ring 2 */}
+        {ring2.map((n, i) => (
+          <RefNode key={`r2-${i}`} x={n.x} y={n.y} r={20} label={n.label} color={PHOSPHOR_DIM} delay={n.delay} />
+        ))}
+        {/* Ring 3 — small dots */}
+        {ring3.map((n, i) => (
+          <RefNode key={`r3-${i}`} x={n.x} y={n.y} r={14} label="" color={DIM} delay={n.delay} />
+        ))}
+      </svg>
+
+      {/* Bottom text section */}
+      <div style={{ position: "absolute", bottom: 30, left: 60, right: 60, zIndex: 10 }}>
+        <Line text="HOW IT WORKS:" delay={55} color={AMBER} fontSize={17} />
+        <div style={{ marginTop: 6 }} />
+        <TypeLine text="1. Share goldbotsachs.com/r/YOUR_ADDRESS" delay={58} speed={2.5} color={WHITE} fontSize={17} />
+        <TypeLine text="2. Referrer set on-chain forever on deposit" delay={70} speed={2.5} color={WHITE} fontSize={17} />
+        <TypeLine text="3. Earn 5% of every referral's yield, cascading" delay={82} speed={2.5} color={WHITE} fontSize={17} />
+        <Line text="No signup. No dashboard. Set once. Earn forever." delay={96} color={PHOSPHOR_DIM} fontSize={15} />
+
         <div style={{ marginTop: 8 }} />
-        <TypeLine text="1. Share goldbotsachs.com/r/YOUR_ADDRESS" delay={48} speed={2.5} color={WHITE} fontSize={18} />
-        <TypeLine text="2. When someone deposits via your link:" delay={62} speed={2.5} color={WHITE} fontSize={18} />
-        <Line  text="     → referrer is set on-chain, forever" delay={76} color={PHOSPHOR} fontSize={17} />
-        <TypeLine text="3. You earn 5% of their yield, automatically" delay={80} speed={2.5} color={WHITE} fontSize={18} />
-        <TypeLine text="4. They can refer others too — cascading" delay={94} speed={2.5} color={WHITE} fontSize={18} />
-
-        <div style={{ marginTop: 16 }} />
-        <Line text="  No signup. No dashboard. No approval." delay={108} color={PHOSPHOR_DIM} fontSize={16} />
-        <Line text="  Set once. Earn forever. Fully on-chain." delay={112} color={PHOSPHOR_DIM} fontSize={16} />
-
-        <div style={{ marginTop: 12 }} />
         <TypeLine
           text="Agents referring agents. This is how it scales."
-          delay={118}
+          delay={102}
           speed={2}
           color={AMBER}
           fontSize={20}
