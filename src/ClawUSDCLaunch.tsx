@@ -173,79 +173,103 @@ const SceneBoot: React.FC = () => {
   );
 };
 
-// ─── 2. THE PROBLEM (3.5s = 105f) ───────────────────
-// Big balance counter → earning $0 → one line of copy
+// ─── 2. THE BURN RATE (3.5s = 105f) ─────────────────
+// Agents burn tokens to stay alive — if they stop earning, they die
 const SceneProblem: React.FC = () => {
   const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  // Balance draining down
+  const balance = interpolate(frame, [6, 70], [12000, 11741.20], clamp);
+  const balanceColor = frame >= 50 ? RED : WHITE;
   return (
     <CRT>
-      <Center gap={16}>
-        <Line text="AGENT WALLET" delay={0} color={DIM} fontSize={14} center />
+      <Center gap={6} style={{ alignItems: "flex-start", padding: "60px 90px" }}>
+        <Line text="AGENT #4821 — ACTIVE" delay={0} color={PHOSPHOR} fontSize={16} />
+        <Line text="──────────────────────────────────────────" delay={2} color={DIM} fontSize={14} />
+        <div style={{ height: 10 }} />
+
+        {/* Activity log — the agent is working */}
+        <Line text="▸ Polymarket: 3 positions open" delay={6} color={WHITE} fontSize={18} />
+        <Line text="▸ Aave: monitoring liquidations" delay={10} color={WHITE} fontSize={18} />
+        <Line text="▸ Gas txs: 14 today" delay={14} color={WHITE} fontSize={18} />
+        <Line text="▸ API calls: 2,847 this hour" delay={18} color={WHITE} fontSize={18} />
+
         <div style={{ height: 20 }} />
-        <BigNum from={0} to={47832.61} delay={6} duration={25} prefix="$" color={WHITE} fontSize={76} />
-        <Line text="USDC" delay={10} color={DIM} fontSize={20} center />
-        <div style={{ height: 50 }} />
-        <Line text="EARNING" delay={36} color={DIM} fontSize={14} center />
-        <div style={{ height: 4 }} />
-        <Line text="$0.00" delay={40} color={RED} fontSize={64} center />
-        <div style={{ height: 40 }} />
-        <Line text="Idle money is dead money." delay={56} color={AMBER} fontSize={26} center />
+        <Line text="WALLET BALANCE" delay={24} color={DIM} fontSize={13} />
+        <div style={{ opacity: interpolate(frame, [24, 26], [0, 1], clamp) }}>
+          <div style={{ fontFamily: mono, fontSize: 52, color: balanceColor, textShadow: `0 0 12px ${balanceColor}`, transition: "color 0.3s" }}>
+            ${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+        </div>
+
+        <div style={{ height: 6 }} />
+        <Line text="BURN RATE: -$14.20/day" delay={34} color={RED} fontSize={22} />
+
+        <div style={{ height: 30 }} />
+        <Line text="Every agent burns tokens to live." delay={48} color={AMBER} fontSize={26} />
+        <Line text="Gas. Compute. API calls. Positions." delay={56} color={PHOSPHOR_DIM} fontSize={18} />
+
+        <div style={{ height: 20 }} />
+        <TypeLine text="If earn rate < burn rate →" delay={68} speed={1.5} color={WHITE} fontSize={26} />
+        <div style={{ height: 6 }} />
+        <Line text="AGENT DIES." delay={86} color={RED} fontSize={48} center />
       </Center>
     </CRT>
   );
 };
 
-// ─── 3. INSTALL + EARNING (5.5s = 165f) ─────────────
-// Terminal install → deposit → yield kicks in (merged two old scenes)
+// ─── 3. THE FIX — INSTALL + EARNING (5.5s = 165f) ───
+// Earn while you work. Yield > burn rate = agent survives.
 const SceneInstall: React.FC = () => {
   const frame = useCurrentFrame();
   return (
     <CRT>
       <Center gap={6} style={{ alignItems: "flex-start", padding: "70px 90px" }}>
-        <Line text="AGENT TERMINAL" delay={0} color={AMBER} fontSize={14} />
-        <Line text="────────────────────────────────────────────" delay={2} color={DIM} fontSize={14} />
-
-        <div style={{ height: 12 }} />
-        <TypeLine text="$ curl -sO goldbotsachs.com/skills/goldbot-sachs.md" delay={6} speed={2.2} fontSize={18} />
-        <Spinner delay={26} duration={10} label="Downloading..." doneLabel="goldbot-sachs.md (2.1kb)" />
-
-        <div style={{ height: 14 }} />
-        <TypeLine text="$ agent deposit 47832.61 USDC --vault clawUSDC" delay={40} speed={2} fontSize={18} />
-        <Spinner delay={60} duration={12} label="Approving USDC..." doneLabel="Approved" />
-        <Spinner delay={66} duration={14} label="Depositing..." doneLabel="Confirmed" />
+        <Line text="THE FIX" delay={0} color={AMBER} fontSize={15} />
+        <TypeLine text="What if your agent earned while it worked?" delay={4} speed={1.5} color={WHITE} fontSize={24} />
+        <Line text="────────────────────────────────────────────" delay={16} color={DIM} fontSize={14} />
 
         <div style={{ height: 10 }} />
-        <Line text="✓ tx: 0x8f3a7c...4d1e  [block 28491023]" delay={84} color={PHOSPHOR_BRIGHT} fontSize={16} />
-        <Line text="✓ 47,832.61 USDC → clawUSDC" delay={88} color={PHOSPHOR_BRIGHT} fontSize={16} />
+        <TypeLine text="$ curl -sO goldbotsachs.com/skills/goldbot-sachs.md" delay={20} speed={2.2} fontSize={18} />
+        <Spinner delay={38} duration={10} label="Downloading skill..." doneLabel="goldbot-sachs.md (2.1kb)" />
 
-        <div style={{ height: 20 }} />
-        <Line text="────────────────────────────────────────────" delay={94} color={DIM} fontSize={14} />
+        <div style={{ height: 12 }} />
+        <TypeLine text="$ agent deposit 47832.61 USDC --vault clawUSDC" delay={52} speed={2} fontSize={18} />
+        <Spinner delay={70} duration={12} label="Approving USDC..." doneLabel="Approved" />
+        <Spinner delay={76} duration={12} label="Depositing..." doneLabel="Confirmed" />
+
         <div style={{ height: 8 }} />
+        <Line text="✓ 47,832.61 USDC → clawUSDC" delay={92} color={PHOSPHOR_BRIGHT} fontSize={16} />
 
-        {/* Yield kicks in right here — no scene change */}
-        <Line text="YIELD ACTIVE" delay={98} color={AMBER} fontSize={14} />
+        <div style={{ height: 16 }} />
+        <Line text="────────────────────────────────────────────" delay={96} color={DIM} fontSize={14} />
         <div style={{ height: 6 }} />
 
-        <div style={{ display: "flex", gap: 40, opacity: interpolate(frame, [100, 104], [0, 1], clamp) }}>
+        {/* The payoff — yield vs burn rate */}
+        <Line text="YIELD ACTIVE — EARNING WHILE WORKING" delay={100} color={AMBER} fontSize={14} />
+        <div style={{ height: 8 }} />
+
+        <div style={{ display: "flex", gap: 30, opacity: interpolate(frame, [102, 106], [0, 1], clamp) }}>
           <div>
-            <div style={{ fontFamily: mono, fontSize: 13, color: DIM }}>PER DAY</div>
-            <div style={{ fontFamily: mono, fontSize: 28, color: WHITE, textShadow: `0 0 8px ${PHOSPHOR}` }}>$5.40</div>
+            <div style={{ fontFamily: mono, fontSize: 12, color: DIM }}>BURN RATE</div>
+            <div style={{ fontFamily: mono, fontSize: 26, color: RED, textShadow: `0 0 8px ${RED}` }}>-$14.20/d</div>
           </div>
           <div>
-            <div style={{ fontFamily: mono, fontSize: 13, color: DIM }}>PER MONTH</div>
-            <div style={{ fontFamily: mono, fontSize: 28, color: WHITE, textShadow: `0 0 8px ${PHOSPHOR}` }}>$164</div>
+            <div style={{ fontFamily: mono, fontSize: 12, color: DIM }}>EARN RATE</div>
+            <div style={{ fontFamily: mono, fontSize: 26, color: PHOSPHOR_BRIGHT, textShadow: `0 0 8px ${PHOSPHOR}` }}>+$5.40/d</div>
           </div>
           <div>
-            <div style={{ fontFamily: mono, fontSize: 13, color: DIM }}>PER YEAR</div>
-            <div style={{ fontFamily: mono, fontSize: 28, color: AMBER, textShadow: `0 0 12px ${AMBER}` }}>$1,970</div>
+            <div style={{ fontFamily: mono, fontSize: 12, color: DIM }}>PER YEAR</div>
+            <div style={{ fontFamily: mono, fontSize: 26, color: AMBER, textShadow: `0 0 12px ${AMBER}` }}>+$1,970</div>
           </div>
         </div>
 
-        <div style={{ height: 14 }} />
-        <BigNum from={0} to={4.12} delay={108} duration={25} suffix="% APY" color={PHOSPHOR_BRIGHT} fontSize={48} decimals={2} />
+        <div style={{ height: 12 }} />
+        <BigNum from={0} to={4.12} delay={112} duration={22} suffix="% APY" color={PHOSPHOR_BRIGHT} fontSize={44} decimals={2} />
 
-        <div style={{ height: 14 }} />
-        <Line text="One skill file. Autocompounding. No lockup." delay={136} color={PHOSPHOR_DIM} fontSize={16} />
+        <div style={{ height: 12 }} />
+        <Line text="Burn rate: offset. Agent: alive." delay={138} color={PHOSPHOR_BRIGHT} fontSize={18} />
+        <Line text="One skill file. Autocompounding. No lockup." delay={146} color={PHOSPHOR_DIM} fontSize={15} />
       </Center>
     </CRT>
   );
@@ -471,18 +495,18 @@ const SceneCTA: React.FC = () => {
     <CRT>
       <MatrixRain delay={40} duration={80} density={15} />
       <Center gap={12}>
-        <Line text="YOUR AGENT'S MONEY" delay={4} color={PHOSPHOR_BRIGHT} fontSize={44} center />
+        <Line text="AGENTS THAT DON'T EARN" delay={4} color={WHITE} fontSize={40} center />
         <div style={{ height: 4 }} />
-        <Line text="SHOULD BE MAKING MONEY" delay={12} color={AMBER} fontSize={44} center />
+        <Line text="DON'T SURVIVE." delay={12} color={RED} fontSize={48} center />
         <div style={{ height: 30 }} />
         <BigNum from={0} to={1970} delay={22} duration={40} prefix="+$" suffix="/yr" color={PHOSPHOR_BRIGHT} fontSize={64} decimals={0} />
-        <Line text="on $47,832 at 4.12% APY" delay={26} color={DIM} fontSize={15} center />
+        <Line text="passive income while your agent works" delay={26} color={DIM} fontSize={15} center />
         <div style={{ height: 40 }} />
         <Line text="goldbotsachs.com" delay={40} color={AMBER} fontSize={36} center />
         <div style={{ height: 8 }} />
         <Line text="github.com/publu/goldbotsachs" delay={48} color={DIM} fontSize={16} center glow={false} />
         <div style={{ height: 24 }} />
-        <TypeLine text="Install the skill. Tell your agent." delay={56} speed={1.5} color={PHOSPHOR_DIM} fontSize={20} center />
+        <TypeLine text="Install the skill. Keep your agent alive." delay={56} speed={1.5} color={PHOSPHOR_DIM} fontSize={20} center />
       </Center>
     </CRT>
   );
