@@ -4,787 +4,632 @@ import {
   interpolate,
   spring,
   Easing,
-  Sequence,
   AbsoluteFill,
+  Sequence,
 } from "remotion";
 import {
   TransitionSeries,
   linearTiming,
 } from "@remotion/transitions";
-import { fade } from "@remotion/transitions/fade";
 import { slide } from "@remotion/transitions/slide";
-import { loadFont } from "@remotion/google-fonts/SpaceMono";
+import { loadFont } from "@remotion/google-fonts/JetBrainsMono";
 import { loadFont as loadFontInter } from "@remotion/google-fonts/Inter";
-import { evolvePath } from "@remotion/paths";
 
 const { fontFamily: mono } = loadFont();
 const { fontFamily: inter } = loadFontInter();
 
-const BG = "#0a0a0a";
-const GOLD = "#c9a84c";
-const GOLD_DIM = "#8a7233";
-const WHITE = "#f5f5f5";
-const GRAY = "#777";
-const DARK_GRAY = "#333";
-const GREEN = "#4ade80";
-const RED_DIM = "#ef4444";
-
-// ─── Helpers ─────────────────────────────────────────
+const BG = "#09090b";
+const GOLD = "#d4a843";
+const GOLD_BRIGHT = "#f0d060";
+const WHITE = "#e4e4e7";
+const DIM = "#52525b";
+const GREEN = "#22c55e";
+const RED = "#ef4444";
+const BLUE = "#3b82f6";
 
 const clamp = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
 
-// Animated circle node for diagrams
-const Node: React.FC<{
-  x: number;
-  y: number;
-  label: string;
-  color: string;
-  delay: number;
-  size?: number;
-  sublabel?: string;
-}> = ({ x, y, label, color, delay, size = 80, sublabel }) => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const s = spring({ frame, fps, delay, config: { damping: 12, stiffness: 200 } });
-  const opacity = interpolate(frame, [delay, delay + 8], [0, 1], clamp);
+// ─── Scan line overlay ───────────────────────────────
+const ScanLines: React.FC = () => (
+  <div
+    style={{
+      position: "absolute",
+      inset: 0,
+      background:
+        "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)",
+      pointerEvents: "none",
+      zIndex: 100,
+    }}
+  />
+);
 
+// ─── Noise grain overlay ─────────────────────────────
+const Grain: React.FC = () => {
+  const frame = useCurrentFrame();
+  // Shift background position each frame for flickering grain
+  const x = (frame * 73) % 200;
+  const y = (frame * 37) % 200;
   return (
     <div
       style={{
         position: "absolute",
-        left: x - size / 2,
-        top: y - size / 2,
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        backgroundColor: color,
-        transform: `scale(${s})`,
-        opacity,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
+        inset: 0,
+        opacity: 0.04,
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+        backgroundPosition: `${x}px ${y}px`,
+        pointerEvents: "none",
+        zIndex: 101,
       }}
-    >
-      <span style={{ fontFamily: mono, fontSize: size * 0.2, color: BG, fontWeight: "bold" }}>
-        {label}
-      </span>
-      {sublabel && (
-        <span style={{ fontFamily: inter, fontSize: size * 0.13, color: BG, opacity: 0.7 }}>
-          {sublabel}
-        </span>
-      )}
-    </div>
+    />
   );
 };
 
-// Animated arrow/flow line between two points
-const FlowArrow: React.FC<{
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
+// ─── Glitch text effect ──────────────────────────────
+const GlitchText: React.FC<{
+  text: string;
+  fontSize: number;
+  color: string;
   delay: number;
-  color?: string;
-  label?: string;
-}> = ({ x1, y1, x2, y2, delay, color = GOLD, label }) => {
+  bold?: boolean;
+}> = ({ text, fontSize, color, delay, bold = true }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const progress = interpolate(frame, [delay, delay + 20], [0, 1], {
-    ...clamp,
-    easing: Easing.out(Easing.quad),
-  });
 
-  const path = `M ${x1} ${y1} L ${x2} ${y2}`;
-  const { strokeDasharray, strokeDashoffset } = evolvePath(progress, path);
+  const appear = interpolate(frame, [delay, delay + 2], [0, 1], clamp);
 
-  // Arrow label
-  const midX = (x1 + x2) / 2;
-  const midY = (y1 + y2) / 2;
-  const labelOpacity = interpolate(frame, [delay + 10, delay + 20], [0, 1], clamp);
+  // Glitch flicker in first few frames
+  const glitchActive = frame >= delay && frame < delay + 8;
+  const glitchOffset = glitchActive ? Math.sin(frame * 47) * 3 : 0;
+  const glitchOpacity = glitchActive ? (frame % 2 === 0 ? 1 : 0.7) : 1;
+
+  // RGB split during glitch
+  const rgbSplit = glitchActive ? 2 : 0;
 
   return (
-    <>
-      <svg
-        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
-      >
-        <path
-          d={path}
-          fill="none"
-          stroke={color}
-          strokeWidth={3}
-          strokeDasharray={strokeDasharray}
-          strokeDashoffset={strokeDashoffset}
-          opacity={0.8}
-        />
-      </svg>
-      {label && (
+    <div style={{ position: "relative", opacity: appear }}>
+      {/* Red channel offset */}
+      {rgbSplit > 0 && (
         <div
           style={{
             position: "absolute",
-            left: midX - 60,
-            top: midY - 24,
-            width: 120,
-            textAlign: "center",
-            fontFamily: inter,
-            fontSize: 14,
-            color: GRAY,
-            opacity: labelOpacity,
+            fontFamily: mono,
+            fontSize,
+            fontWeight: bold ? "bold" : "normal",
+            color: "rgba(255,0,0,0.3)",
+            transform: `translate(${rgbSplit}px, -${rgbSplit}px)`,
+            whiteSpace: "pre",
           }}
         >
-          {label}
+          {text}
         </div>
       )}
-    </>
-  );
-};
-
-// ─── Scene 1: The Hook ───────────────────────────────
-// Visual: Agent icon with a pile of USDC, a red "idle" indicator pulsing
-
-const SceneHook: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  // Agent box appears
-  const agentScale = spring({ frame, fps, config: { damping: 12 } });
-
-  // USDC stack appears
-  const usdcOpacity = interpolate(frame, [15, 30], [0, 1], clamp);
-  const usdcY = interpolate(frame, [15, 30], [20, 0], clamp);
-
-  // "IDLE" badge pulses red
-  const idleOpacity = interpolate(frame, [35, 45], [0, 1], clamp);
-  const pulse = interpolate(frame % 30, [0, 15, 30], [0.6, 1, 0.6]);
-
-  // Text
-  const textOpacity = interpolate(frame, [50, 65], [0, 1], clamp);
-  const textY = interpolate(frame, [50, 65], [15, 0], clamp);
-
-  // Amount counter
-  const amount = interpolate(frame, [30, 90], [0, 12847.52], clamp);
-
-  return (
-    <div style={{ ...fullScreen, justifyContent: "center", alignItems: "center" }}>
-      {/* Agent visual */}
-      <div
-        style={{
-          transform: `scale(${agentScale})`,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 20,
-        }}
-      >
-        {/* Agent icon - terminal/bot */}
+      {/* Blue channel offset */}
+      {rgbSplit > 0 && (
         <div
           style={{
-            width: 140,
-            height: 140,
-            borderRadius: 24,
-            backgroundColor: "#1a1a1a",
-            border: `2px solid ${DARK_GRAY}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            position: "relative",
+            position: "absolute",
+            fontFamily: mono,
+            fontSize,
+            fontWeight: bold ? "bold" : "normal",
+            color: "rgba(0,0,255,0.3)",
+            transform: `translate(-${rgbSplit}px, ${rgbSplit}px)`,
+            whiteSpace: "pre",
           }}
         >
-          <span style={{ fontSize: 64 }}>🤖</span>
-
-          {/* IDLE badge */}
-          <div
-            style={{
-              position: "absolute",
-              top: -10,
-              right: -10,
-              backgroundColor: RED_DIM,
-              borderRadius: 8,
-              padding: "4px 10px",
-              opacity: idleOpacity * pulse,
-              fontFamily: mono,
-              fontSize: 14,
-              color: WHITE,
-              fontWeight: "bold",
-            }}
-          >
-            IDLE
-          </div>
+          {text}
         </div>
-
-        {/* USDC pile */}
-        <div
-          style={{
-            opacity: usdcOpacity,
-            transform: `translateY(${usdcY}px)`,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: mono,
-              fontSize: 48,
-              color: WHITE,
-              fontWeight: "bold",
-            }}
-          >
-            ${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-          <div style={{ fontFamily: inter, fontSize: 20, color: GRAY }}>USDC</div>
-        </div>
-      </div>
-
-      {/* Bottom text */}
+      )}
+      {/* Main text */}
       <div
         style={{
-          position: "absolute",
-          bottom: 120,
-          opacity: textOpacity,
-          transform: `translateY(${textY}px)`,
-          textAlign: "center",
+          fontFamily: mono,
+          fontSize,
+          fontWeight: bold ? "bold" : "normal",
+          color,
+          opacity: glitchOpacity,
+          transform: `translateX(${glitchOffset}px)`,
+          whiteSpace: "pre",
         }}
       >
-        <div style={{ fontFamily: inter, fontSize: 28, color: GRAY }}>
-          Sitting in a wallet. Earning nothing.
-        </div>
+        {text}
       </div>
     </div>
   );
 };
 
-// ─── Scene 2: The Solution — clawUSDC ────────────────
-// Visual: clawUSDC vault appears, USDC flows into it
-
-const SceneSolution: React.FC = () => {
+// ─── Terminal typing effect ──────────────────────────
+const TerminalLine: React.FC<{
+  prefix?: string;
+  text: string;
+  delay: number;
+  speed?: number;
+  color?: string;
+  prefixColor?: string;
+}> = ({ prefix = "$", text, delay, speed = 1.5, color = WHITE, prefixColor = GREEN }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Vault box springs in
-  const vaultScale = spring({ frame, fps, delay: 5, config: { damping: 15 } });
-
-  // "One skill file" text
-  const skillOpacity = interpolate(frame, [25, 40], [0, 1], clamp);
-  const skillY = interpolate(frame, [25, 40], [15, 0], clamp);
-
-  // USDC coins flowing into vault
-  const coinCount = 5;
-  const coins = Array.from({ length: coinCount }, (_, i) => {
-    const delay = 35 + i * 8;
-    const progress = interpolate(frame, [delay, delay + 15], [0, 1], {
-      ...clamp,
-      easing: Easing.inOut(Easing.quad),
-    });
-    const opacity = interpolate(frame, [delay, delay + 5, delay + 12, delay + 15], [0, 1, 1, 0], clamp);
-    return { progress, opacity, i };
-  });
-
-  // Yield counter starts
-  const yieldStart = 70;
-  const yieldProgress = interpolate(frame, [yieldStart, yieldStart + 40], [0, 1], clamp);
-  const yieldAmount = interpolate(frame, [yieldStart, yieldStart + 40], [0, 4.12], clamp);
-  const yieldOpacity = interpolate(frame, [yieldStart, yieldStart + 10], [0, 1], clamp);
+  const lineOpacity = interpolate(frame, [delay, delay + 1], [0, 1], clamp);
+  const charsVisible = Math.floor(
+    interpolate(frame, [delay, delay + text.length / speed], [0, text.length], clamp)
+  );
+  const showCursor = frame >= delay && frame < delay + text.length / speed + 15;
+  const cursorBlink = Math.floor(frame / 8) % 2 === 0;
 
   return (
-    <div style={{ ...fullScreen, justifyContent: "center", alignItems: "center" }}>
-      {/* clawUSDC vault */}
-      <div
-        style={{
-          transform: `scale(${vaultScale})`,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-        }}
-      >
-        {/* Vault box */}
-        <div
-          style={{
-            width: 280,
-            height: 180,
-            borderRadius: 20,
-            backgroundColor: "#1a1a1a",
-            border: `2px solid ${GOLD}`,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          {/* Gold glow */}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: `radial-gradient(ellipse at center, ${GOLD}15 0%, transparent 70%)`,
-            }}
-          />
-          <div style={{ fontFamily: mono, fontSize: 36, color: GOLD, fontWeight: "bold", zIndex: 1 }}>
-            clawUSDC
-          </div>
-          <div style={{ fontFamily: inter, fontSize: 16, color: GRAY, zIndex: 1, marginTop: 8 }}>
-            ERC-4626 Vault
-          </div>
-        </div>
+    <div style={{ opacity: lineOpacity, display: "flex", gap: 8, fontFamily: mono, fontSize: 22 }}>
+      <span style={{ color: prefixColor }}>{prefix}</span>
+      <span style={{ color }}>{text.slice(0, charsVisible)}</span>
+      {showCursor && cursorBlink && <span style={{ color: GOLD }}>_</span>}
+    </div>
+  );
+};
 
-        {/* Skill file hint */}
-        <div
-          style={{
-            opacity: skillOpacity,
-            transform: `translateY(${skillY}px)`,
-            marginTop: 24,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: mono,
-              fontSize: 16,
-              color: GOLD_DIM,
-              backgroundColor: "#1a1a1a",
-              padding: "8px 16px",
-              borderRadius: 8,
-              border: `1px solid ${DARK_GRAY}`,
-            }}
-          >
-            goldbot-sachs.md
-          </div>
-          <span style={{ fontFamily: inter, fontSize: 16, color: GRAY }}>← one file</span>
-        </div>
-      </div>
+// ─── Particle flow ───────────────────────────────────
+const ParticleFlow: React.FC<{
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  count: number;
+  delay: number;
+  duration: number;
+  color?: string;
+}> = ({ startX, startY, endX, endY, count, delay, duration, color = GOLD }) => {
+  const frame = useCurrentFrame();
 
-      {/* Flying USDC coins */}
-      {coins.map(({ progress, opacity, i }) => {
-        const startX = -200 + i * 30;
-        const startY = -250;
-        const endX = 0;
-        const endY = -20;
-        const x = interpolate(progress, [0, 1], [startX, endX]);
+  return (
+    <>
+      {Array.from({ length: count }, (_, i) => {
+        const particleDelay = delay + (i * duration) / count;
+        const progress = interpolate(
+          frame,
+          [particleDelay, particleDelay + duration * 0.6],
+          [0, 1],
+          { ...clamp, easing: Easing.inOut(Easing.quad) }
+        );
+        const opacity = interpolate(
+          frame,
+          [particleDelay, particleDelay + 5, particleDelay + duration * 0.5, particleDelay + duration * 0.6],
+          [0, 0.8, 0.8, 0],
+          clamp
+        );
+        // Add slight randomness to path
+        const wobble = Math.sin(i * 2.7 + frame * 0.1) * 15;
+        const x = interpolate(progress, [0, 1], [startX, endX]) + wobble;
         const y = interpolate(progress, [0, 1], [startY, endY]);
+        const size = 4 + (i % 3) * 2;
+
         return (
           <div
             key={i}
             style={{
               position: "absolute",
-              left: `calc(50% + ${x}px)`,
-              top: `calc(50% + ${y}px)`,
-              width: 32,
-              height: 32,
+              left: x,
+              top: y,
+              width: size,
+              height: size,
               borderRadius: "50%",
-              backgroundColor: "#2775CA",
-              border: "2px solid #fff",
+              backgroundColor: color,
               opacity,
+              boxShadow: `0 0 ${size * 2}px ${color}`,
+            }}
+          />
+        );
+      })}
+    </>
+  );
+};
+
+// ─── Scene 1: "Your agent is broke" ──────────────────
+const Scene1: React.FC = () => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  // Hard flash in
+  const flash = interpolate(frame, [0, 3], [1, 0], clamp);
+
+  // Balance counter ticking up then stopping
+  const balance = interpolate(frame, [8, 30], [0, 47832.61], {
+    ...clamp,
+    easing: Easing.out(Easing.quad),
+  });
+
+  const balanceOpacity = interpolate(frame, [5, 8], [0, 1], clamp);
+  const zeroOpacity = interpolate(frame, [40, 43], [0, 1], clamp);
+  const earning = interpolate(frame, [40, 42], [0, 1], clamp);
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: BG }}>
+      <ScanLines />
+      <Grain />
+      {/* White flash */}
+      <div style={{ position: "absolute", inset: 0, backgroundColor: WHITE, opacity: flash, zIndex: 50 }} />
+
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 20 }}>
+        {/* Balance */}
+        <div style={{ opacity: balanceOpacity, textAlign: "center" }}>
+          <div style={{ fontFamily: mono, fontSize: 18, color: DIM, marginBottom: 12, letterSpacing: 4, textTransform: "uppercase" }}>
+            Agent Wallet
+          </div>
+          <div style={{ fontFamily: mono, fontSize: 80, color: WHITE, fontWeight: "bold", letterSpacing: -2 }}>
+            ${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+          <div style={{ fontFamily: mono, fontSize: 24, color: DIM, marginTop: 8 }}>USDC</div>
+        </div>
+
+        {/* Earning: $0.00 */}
+        <div style={{ opacity: zeroOpacity, textAlign: "center", marginTop: 30 }}>
+          <div style={{ fontFamily: mono, fontSize: 18, color: DIM, letterSpacing: 4, textTransform: "uppercase" }}>
+            Earning
+          </div>
+          <div style={{ fontFamily: mono, fontSize: 56, color: RED, fontWeight: "bold" }}>
+            $0.00
+          </div>
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// ─── Scene 2: "Fix that." + Terminal install ─────────
+const Scene2: React.FC = () => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: BG }}>
+      <ScanLines />
+      <Grain />
+
+      <div style={{ padding: 80, display: "flex", flexDirection: "column", height: "100%", justifyContent: "center" }}>
+        {/* Terminal window */}
+        <div
+          style={{
+            backgroundColor: "#111113",
+            borderRadius: 12,
+            border: `1px solid #27272a`,
+            overflow: "hidden",
+          }}
+        >
+          {/* Title bar */}
+          <div style={{ display: "flex", gap: 8, padding: "12px 16px", borderBottom: "1px solid #27272a" }}>
+            <div style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: "#ef4444" }} />
+            <div style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: "#eab308" }} />
+            <div style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: "#22c55e" }} />
+            <span style={{ fontFamily: mono, fontSize: 13, color: DIM, marginLeft: 12 }}>agent-terminal</span>
+          </div>
+
+          {/* Terminal content */}
+          <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <TerminalLine
+              prefix="$"
+              text="curl -O goldbotsachs.com/skills/goldbot-sachs.md"
+              delay={5}
+              speed={2}
+            />
+            <TerminalLine
+              prefix=">"
+              text="Skill installed: goldbot-sachs"
+              delay={35}
+              speed={3}
+              color={GREEN}
+              prefixColor={GREEN}
+            />
+            <TerminalLine
+              prefix="$"
+              text="agent deposit --amount 47832.61 --asset USDC"
+              delay={50}
+              speed={2}
+            />
+            <TerminalLine
+              prefix=">"
+              text="tx: 0x8f3a...c4d1  ✓  deposited into clawUSDC"
+              delay={80}
+              speed={2.5}
+              color={GOLD}
+              prefixColor={GREEN}
+            />
+            <TerminalLine
+              prefix=">"
+              text="earning ~4.1% APY via Beefy → Morpho → Steakhouse"
+              delay={100}
+              speed={2}
+              color={DIM}
+              prefixColor={GREEN}
+            />
+          </div>
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// ─── Scene 3: Vault flow — particles ─────────────────
+const Scene3: React.FC = () => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  // Node positions (vertical stack, centered)
+  const cx = 540;
+  const nodes = [
+    { y: 180, label: "USDC", sub: "your agent", color: BLUE },
+    { y: 340, label: "clawUSDC", sub: "ERC-4626", color: GOLD },
+    { y: 500, label: "Beefy", sub: "optimizer", color: "#59A662" },
+    { y: 660, label: "Morpho", sub: "lending", color: "#818cf8" },
+    { y: 820, label: "Steakhouse", sub: "curator", color: "#f97316" },
+  ];
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: BG }}>
+      <ScanLines />
+      <Grain />
+
+      {/* Title */}
+      <GlitchText text="Where your USDC goes" fontSize={32} color={WHITE} delay={0} />
+      <div style={{ position: "absolute", top: 50, width: "100%", textAlign: "center" }}>
+        <GlitchText text="Where your money goes" fontSize={34} color={WHITE} delay={0} />
+      </div>
+
+      {/* Nodes */}
+      {nodes.map((node, i) => {
+        const nodeDelay = 5 + i * 10;
+        const s = spring({ frame, fps, delay: nodeDelay, config: { damping: 200 } });
+        const opacity = interpolate(frame, [nodeDelay, nodeDelay + 5], [0, 1], clamp);
+
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: cx - 100,
+              top: node.y - 28,
+              width: 200,
+              opacity,
+              transform: `scale(${s})`,
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
-              justifyContent: "center",
-              fontFamily: mono,
-              fontSize: 14,
-              color: WHITE,
-              fontWeight: "bold",
             }}
           >
-            $
+            {/* Horizontal line accent */}
+            <div style={{ width: 40, height: 2, backgroundColor: node.color, marginBottom: 8, opacity: 0.6 }} />
+            <div style={{ fontFamily: mono, fontSize: 22, color: node.color, fontWeight: "bold" }}>
+              {node.label}
+            </div>
+            <div style={{ fontFamily: mono, fontSize: 14, color: DIM, marginTop: 4 }}>
+              {node.sub}
+            </div>
           </div>
         );
       })}
 
-      {/* Yield indicator */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 120,
-          opacity: yieldOpacity,
-          display: "flex",
-          alignItems: "baseline",
-          gap: 12,
-        }}
-      >
-        <span style={{ fontFamily: mono, fontSize: 56, color: GREEN, fontWeight: "bold" }}>
-          ~{yieldAmount.toFixed(1)}%
-        </span>
-        <span style={{ fontFamily: inter, fontSize: 24, color: GRAY }}>APY</span>
-      </div>
-    </div>
-  );
-};
-
-// ─── Scene 3: The Flow — How money moves ─────────────
-// Visual: Animated diagram USDC → clawUSDC → Beefy → Morpho → Steakhouse
-
-const SceneFlow: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  // Title
-  const titleOpacity = interpolate(frame, [0, 12], [0, 1], clamp);
-
-  // Nodes positioned in a flow
-  const cx = 540;
-  const nodes = [
-    { x: cx, y: 220, label: "USDC", color: "#2775CA", delay: 5, sublabel: "your agent's" },
-    { x: cx, y: 370, label: "claw", color: GOLD, delay: 15, sublabel: "ERC-4626" },
-    { x: cx, y: 520, label: "Beefy", color: "#59A662", delay: 25, sublabel: "optimizer" },
-    { x: cx, y: 670, label: "Morpho", color: "#6366f1", delay: 35, sublabel: "lending" },
-    { x: cx, y: 820, label: "Steak", color: "#ef8844", delay: 45, sublabel: "curator" },
-  ];
-
-  // Yield flowing back up
-  const returnDelay = 65;
-  const returnProgress = interpolate(frame, [returnDelay, returnDelay + 40], [0, 1], {
-    ...clamp,
-    easing: Easing.inOut(Easing.quad),
-  });
-  const returnOpacity = interpolate(frame, [returnDelay, returnDelay + 10], [0, 1], clamp);
-
-  // "Autocompound" label
-  const autoOpacity = interpolate(frame, [returnDelay + 20, returnDelay + 30], [0, 1], clamp);
-
-  return (
-    <div style={{ ...fullScreen, position: "relative" }}>
-      {/* Title */}
-      <div
-        style={{
-          opacity: titleOpacity,
-          textAlign: "center",
-          marginTop: 60,
-        }}
-      >
-        <span style={{ fontFamily: mono, fontSize: 32, color: WHITE, fontWeight: "bold" }}>
-          Where your USDC goes
-        </span>
-      </div>
-
-      {/* Flow arrows between nodes */}
+      {/* Particle flows between nodes */}
       {nodes.slice(0, -1).map((node, i) => (
-        <FlowArrow
+        <ParticleFlow
           key={i}
-          x1={node.x}
-          y1={node.y + 40}
-          x2={nodes[i + 1].x}
-          y2={nodes[i + 1].y - 40}
-          delay={node.delay + 8}
-          color={GOLD_DIM}
+          startX={cx - 2}
+          startY={node.y + 20}
+          endX={cx - 2}
+          endY={nodes[i + 1].y - 35}
+          count={6}
+          delay={15 + i * 10}
+          duration={30}
+          color={GOLD}
         />
       ))}
 
-      {/* Nodes */}
-      {nodes.map((node, i) => (
-        <Node key={i} {...node} />
-      ))}
-
-      {/* Return yield arrow (right side) */}
-      <svg
-        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none" }}
-      >
-        {/* Curved return path */}
-        {(() => {
-          const path = `M ${cx + 50} 800 Q ${cx + 180} 520 ${cx + 50} 240`;
-          const { strokeDasharray, strokeDashoffset } = evolvePath(returnProgress, path);
-          return (
-            <path
-              d={path}
-              fill="none"
-              stroke={GREEN}
-              strokeWidth={2.5}
-              strokeDasharray={strokeDasharray}
-              strokeDashoffset={strokeDashoffset}
-              opacity={returnOpacity * 0.7}
-            />
-          );
-        })()}
-      </svg>
+      {/* Return yield — particles going back up on the right side */}
+      <ParticleFlow
+        startX={cx + 120}
+        startY={800}
+        endX={cx + 120}
+        endY={200}
+        count={8}
+        delay={60}
+        duration={40}
+        color={GREEN}
+      />
 
       {/* Autocompound label */}
-      <div
-        style={{
-          position: "absolute",
-          right: 100,
-          top: 480,
-          opacity: autoOpacity,
-          transform: `rotate(-90deg)`,
-        }}
-      >
-        <span style={{ fontFamily: mono, fontSize: 18, color: GREEN }}>
-          ↑ yield autocompounds
-        </span>
-      </div>
-    </div>
-  );
-};
-
-// ─── Scene 4: Referrals — Agents referring agents ────
-// Visual: Network graph expanding from one node
-
-const SceneReferrals: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  const cx = 540;
-  const cy = 450;
-
-  // Center agent
-  const centerScale = spring({ frame, fps, config: { damping: 12 } });
-
-  // First ring - 3 agents
-  const ring1 = [
-    { x: cx - 200, y: cy - 160, delay: 15 },
-    { x: cx + 200, y: cy - 160, delay: 20 },
-    { x: cx, y: cy + 220, delay: 25 },
-  ];
-
-  // Second ring - 6 agents (2 from each first ring)
-  const ring2 = [
-    { x: cx - 350, y: cy - 320, delay: 40 },
-    { x: cx - 100, y: cy - 350, delay: 44 },
-    { x: cx + 100, y: cy - 350, delay: 48 },
-    { x: cx + 350, y: cy - 320, delay: 52 },
-    { x: cx - 150, y: cy + 380, delay: 56 },
-    { x: cx + 150, y: cy + 380, delay: 60 },
-  ];
-
-  // 5% label
-  const labelOpacity = interpolate(frame, [30, 40], [0, 1], clamp);
-
-  // "Cascading" text
-  const cascadeOpacity = interpolate(frame, [65, 75], [0, 1], clamp);
-
-  return (
-    <div style={{ ...fullScreen, position: "relative" }}>
-      {/* Title */}
-      <div style={{ textAlign: "center", marginTop: 60 }}>
-        <span style={{ fontFamily: mono, fontSize: 32, color: WHITE, fontWeight: "bold" }}>
-          Agents referring agents
-        </span>
-      </div>
-
-      {/* Lines from center to ring 1 */}
-      {ring1.map((node, i) => (
-        <FlowArrow
-          key={`l1-${i}`}
-          x1={cx}
-          y1={cy}
-          x2={node.x}
-          y2={node.y}
-          delay={node.delay - 5}
-          color={GOLD_DIM}
-          label={i === 0 ? "5% yield" : undefined}
-        />
-      ))}
-
-      {/* Lines from ring 1 to ring 2 */}
-      {ring2.slice(0, 2).map((node, i) => (
-        <FlowArrow key={`l2a-${i}`} x1={ring1[0].x} y1={ring1[0].y} x2={node.x} y2={node.y} delay={node.delay - 5} color={DARK_GRAY} />
-      ))}
-      {ring2.slice(2, 4).map((node, i) => (
-        <FlowArrow key={`l2b-${i}`} x1={ring1[1].x} y1={ring1[1].y} x2={node.x} y2={node.y} delay={node.delay - 5} color={DARK_GRAY} />
-      ))}
-      {ring2.slice(4, 6).map((node, i) => (
-        <FlowArrow key={`l2c-${i}`} x1={ring1[2].x} y1={ring1[2].y} x2={node.x} y2={node.y} delay={node.delay - 5} color={DARK_GRAY} />
-      ))}
-
-      {/* Center node */}
-      <Node x={cx} y={cy} label="You" color={GOLD} delay={0} size={100} sublabel="agent" />
-
-      {/* Ring 1 nodes */}
-      {ring1.map((node, i) => (
-        <Node key={`r1-${i}`} x={node.x} y={node.y} label={`A${i + 1}`} color="#444" delay={node.delay} size={70} sublabel="agent" />
-      ))}
-
-      {/* Ring 2 nodes */}
-      {ring2.map((node, i) => (
-        <Node key={`r2-${i}`} x={node.x} y={node.y} label={`A${i + 4}`} color="#333" delay={node.delay} size={55} />
-      ))}
-
-      {/* Cascading label */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 80,
-          width: "100%",
-          textAlign: "center",
-          opacity: cascadeOpacity,
-        }}
-      >
-        <span style={{ fontFamily: inter, fontSize: 24, color: GRAY }}>
-          Permanent. On-chain. No signup.
-        </span>
-      </div>
-    </div>
-  );
-};
-
-// ─── Scene 5: Gasless ───────────────────────────────
-// Visual: "Zero ETH? No problem" with CoW swap animation
-
-const SceneGasless: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  const titleScale = spring({ frame, fps, config: { damping: 15 } });
-  const step1Opacity = interpolate(frame, [20, 32], [0, 1], clamp);
-  const step2Opacity = interpolate(frame, [35, 47], [0, 1], clamp);
-  const step3Opacity = interpolate(frame, [50, 62], [0, 1], clamp);
-  const checkOpacity = interpolate(frame, [65, 75], [0, 1], clamp);
-
-  const steps = [
-    { label: "Agent signs a permit", opacity: step1Opacity, icon: "✍️" },
-    { label: "CoW solver pays gas", opacity: step2Opacity, icon: "🐄" },
-    { label: "USDC → ETH + deposit", opacity: step3Opacity, icon: "⚡" },
-  ];
-
-  return (
-    <div style={{ ...fullScreen, justifyContent: "center", alignItems: "center" }}>
-      <div style={{ textAlign: "center" }}>
-        <div
-          style={{
-            fontFamily: mono,
-            fontSize: 44,
-            color: WHITE,
-            fontWeight: "bold",
-            transform: `scale(${titleScale})`,
-            marginBottom: 60,
-          }}
-        >
-          Zero ETH? <span style={{ color: GREEN }}>No problem.</span>
-        </div>
-
-        {steps.map((step, i) => (
+      {(() => {
+        const opacity = interpolate(frame, [70, 78], [0, 1], clamp);
+        return (
           <div
-            key={i}
             style={{
-              opacity: step.opacity,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 16,
-              marginTop: 28,
+              position: "absolute",
+              right: 80,
+              top: 490,
+              opacity,
+              fontFamily: mono,
+              fontSize: 16,
+              color: GREEN,
+              transform: "rotate(-90deg)",
+              transformOrigin: "center",
+              letterSpacing: 2,
+              textTransform: "uppercase",
             }}
           >
-            <span style={{ fontSize: 32 }}>{step.icon}</span>
-            <span style={{ fontFamily: inter, fontSize: 26, color: GRAY }}>{step.label}</span>
+            autocompound
           </div>
-        ))}
-
-        <div
-          style={{
-            opacity: checkOpacity,
-            marginTop: 50,
-            fontFamily: mono,
-            fontSize: 22,
-            color: GREEN,
-          }}
-        >
-          Fully operational in one step
-        </div>
-      </div>
-    </div>
+        );
+      })()}
+    </AbsoluteFill>
   );
 };
 
-// ─── Scene 6: CTA ────────────────────────────────────
-
-const SceneCTA: React.FC = () => {
+// ─── Scene 4: Referrals — fast, punchy ───────────────
+const Scene4: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const dotScale = spring({ frame, fps, config: { damping: 12, stiffness: 200 } });
-  const titleOpacity = interpolate(frame, [10, 25], [0, 1], clamp);
-  const titleY = interpolate(frame, [10, 25], [30, 0], clamp);
-  const italicOpacity = interpolate(frame, [25, 40], [0, 1], clamp);
-  const urlOpacity = interpolate(frame, [45, 58], [0, 1], clamp);
-
-  // Pulsing gold glow behind the dot
-  const glowSize = interpolate(frame % 60, [0, 30, 60], [60, 100, 60]);
-  const glowOpacity = interpolate(frame % 60, [0, 30, 60], [0.15, 0.3, 0.15]);
+  // Lines appear fast
+  const lines = [
+    { text: "Share your link", value: "goldbotsachs.com/r/0x...", delay: 0 },
+    { text: "Earn", value: "5% of referrals' yield", delay: 15 },
+    { text: "On-chain", value: "permanent, no signup", delay: 30 },
+    { text: "Cascading", value: "agents refer agents", delay: 45 },
+  ];
 
   return (
-    <div style={{ ...fullScreen, justifyContent: "center", alignItems: "center" }}>
-      {/* Glow */}
+    <AbsoluteFill style={{ backgroundColor: BG }}>
+      <ScanLines />
+      <Grain />
+
+      <div style={{ padding: 80, display: "flex", flexDirection: "column", justifyContent: "center", height: "100%", gap: 40 }}>
+        <GlitchText text="Referrals" fontSize={48} color={GOLD} delay={0} />
+
+        <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 32 }}>
+          {lines.map((line, i) => {
+            const opacity = interpolate(frame, [line.delay + 5, line.delay + 8], [0, 1], clamp);
+            const x = interpolate(frame, [line.delay + 5, line.delay + 10], [40, 0], {
+              ...clamp,
+              easing: Easing.out(Easing.quad),
+            });
+
+            return (
+              <div
+                key={i}
+                style={{
+                  opacity,
+                  transform: `translateX(${x}px)`,
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: 20,
+                }}
+              >
+                <div style={{ fontFamily: mono, fontSize: 22, color: GOLD, fontWeight: "bold", minWidth: 180 }}>
+                  {line.text}
+                </div>
+                <div style={{ fontFamily: mono, fontSize: 20, color: DIM }}>
+                  {line.value}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Network visualization — simple expanding dots */}
+        {(() => {
+          const netOpacity = interpolate(frame, [55, 62], [0, 1], clamp);
+          const dots = Array.from({ length: 12 }, (_, i) => {
+            const angle = (i / 12) * Math.PI * 2;
+            const radius = interpolate(frame, [55, 80], [0, 160], {
+              ...clamp,
+              easing: Easing.out(Easing.quad),
+            });
+            const dotOpacity = interpolate(frame, [55 + i * 2, 58 + i * 2], [0, 1], clamp);
+            return {
+              x: 780 + Math.cos(angle) * radius,
+              y: 540 + Math.sin(angle) * radius,
+              opacity: dotOpacity,
+            };
+          });
+
+          return (
+            <div style={{ position: "absolute", inset: 0, opacity: netOpacity }}>
+              {/* Center dot */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: 774,
+                  top: 534,
+                  width: 12,
+                  height: 12,
+                  borderRadius: "50%",
+                  backgroundColor: GOLD,
+                  boxShadow: `0 0 20px ${GOLD}`,
+                }}
+              />
+              {/* Expanding dots */}
+              {dots.map((dot, i) => (
+                <div
+                  key={i}
+                  style={{
+                    position: "absolute",
+                    left: dot.x,
+                    top: dot.y,
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    backgroundColor: DIM,
+                    opacity: dot.opacity,
+                  }}
+                />
+              ))}
+            </div>
+          );
+        })()}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// ─── Scene 5: CTA ────────────────────────────────────
+const Scene5: React.FC = () => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  // Gold glow pulse
+  const glowSize = interpolate(frame % 45, [0, 22, 45], [80, 160, 80]);
+  const glowOpacity = interpolate(frame % 45, [0, 22, 45], [0.1, 0.25, 0.1]);
+
+  const titleDelay = 5;
+  const urlDelay = 40;
+  const tagDelay = 55;
+
+  const urlOpacity = interpolate(frame, [urlDelay, urlDelay + 8], [0, 1], clamp);
+  const tagOpacity = interpolate(frame, [tagDelay, tagDelay + 8], [0, 1], clamp);
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: BG }}>
+      <ScanLines />
+      <Grain />
+
+      {/* Center glow */}
       <div
         style={{
           position: "absolute",
+          left: "50%",
+          top: "45%",
+          transform: "translate(-50%, -50%)",
           width: glowSize,
           height: glowSize,
           borderRadius: "50%",
           backgroundColor: GOLD,
           opacity: glowOpacity,
-          filter: "blur(30px)",
+          filter: "blur(40px)",
         }}
       />
 
-      {/* Gold dot */}
-      <div
-        style={{
-          width: 16,
-          height: 16,
-          borderRadius: "50%",
-          backgroundColor: GOLD,
-          transform: `scale(${dotScale})`,
-          marginBottom: 50,
-          zIndex: 1,
-        }}
-      />
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 16, zIndex: 1 }}>
+        <GlitchText text="Your agent's money" fontSize={46} color={WHITE} delay={titleDelay} />
+        <GlitchText text="should be making money." fontSize={46} color={GOLD} delay={titleDelay + 8} />
 
-      {/* Title */}
-      <div
-        style={{
-          fontFamily: mono,
-          fontSize: 48,
-          color: WHITE,
-          fontWeight: "bold",
-          opacity: titleOpacity,
-          transform: `translateY(${titleY}px)`,
-          textAlign: "center",
-          lineHeight: 1.3,
-          zIndex: 1,
-        }}
-      >
-        Your agent's money
-        <br />
-        should be{" "}
-        <span
-          style={{
-            color: GOLD,
-            fontStyle: "italic",
-            opacity: italicOpacity,
-          }}
-        >
-          making money
-        </span>
-      </div>
+        <div style={{ marginTop: 50, opacity: urlOpacity }}>
+          <div
+            style={{
+              fontFamily: mono,
+              fontSize: 30,
+              color: GOLD,
+              letterSpacing: 1,
+              padding: "12px 28px",
+              border: `1px solid ${GOLD}40`,
+              borderRadius: 8,
+            }}
+          >
+            goldbotsachs.com
+          </div>
+        </div>
 
-      {/* URL */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 100,
-          fontFamily: mono,
-          fontSize: 28,
-          color: GOLD_DIM,
-          opacity: urlOpacity,
-          zIndex: 1,
-        }}
-      >
-        goldbotsachs.com
+        <div style={{ opacity: tagOpacity, marginTop: 24 }}>
+          <span style={{ fontFamily: mono, fontSize: 16, color: DIM, letterSpacing: 3, textTransform: "uppercase" }}>
+            Yield for AI agents
+          </span>
+        </div>
       </div>
-    </div>
+    </AbsoluteFill>
   );
-};
-
-// ─── Full Screen Helper ──────────────────────────────
-
-const fullScreen: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  width: "100%",
-  height: "100%",
-  backgroundColor: BG,
-  position: "relative",
 };
 
 // ─── Main Composition ────────────────────────────────
@@ -792,54 +637,45 @@ const fullScreen: React.CSSProperties = {
 export const ClawUSDCLaunch: React.FC = () => {
   return (
     <TransitionSeries>
-      {/* Scene 1: The Hook — idle USDC */}
-      <TransitionSeries.Sequence durationInFrames={105}>
-        <SceneHook />
+      {/* Scene 1: The hook — your agent is broke (2.5s) */}
+      <TransitionSeries.Sequence durationInFrames={75}>
+        <Scene1 />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
-        presentation={fade()}
-        timing={linearTiming({ durationInFrames: 12 })}
+        presentation={slide({ direction: "from-right" })}
+        timing={linearTiming({ durationInFrames: 6 })}
       />
 
-      {/* Scene 2: The Solution — clawUSDC vault */}
+      {/* Scene 2: Terminal install + deposit (4s) */}
       <TransitionSeries.Sequence durationInFrames={120}>
-        <SceneSolution />
+        <Scene2 />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
         presentation={slide({ direction: "from-bottom" })}
-        timing={linearTiming({ durationInFrames: 12 })}
+        timing={linearTiming({ durationInFrames: 6 })}
       />
 
-      {/* Scene 3: The Flow — money path diagram */}
-      <TransitionSeries.Sequence durationInFrames={120}>
-        <SceneFlow />
-      </TransitionSeries.Sequence>
-      <TransitionSeries.Transition
-        presentation={fade()}
-        timing={linearTiming({ durationInFrames: 12 })}
-      />
-
-      {/* Scene 4: Referrals — network graph */}
+      {/* Scene 3: Vault flow with particles (3.5s) */}
       <TransitionSeries.Sequence durationInFrames={105}>
-        <SceneReferrals />
+        <Scene3 />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
-        presentation={fade()}
-        timing={linearTiming({ durationInFrames: 12 })}
+        presentation={slide({ direction: "from-right" })}
+        timing={linearTiming({ durationInFrames: 6 })}
       />
 
-      {/* Scene 5: Gasless — CoW swap */}
+      {/* Scene 4: Referrals (3s) */}
       <TransitionSeries.Sequence durationInFrames={90}>
-        <SceneGasless />
+        <Scene4 />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
-        presentation={fade()}
-        timing={linearTiming({ durationInFrames: 12 })}
+        presentation={slide({ direction: "from-bottom" })}
+        timing={linearTiming({ durationInFrames: 6 })}
       />
 
-      {/* Scene 6: CTA */}
-      <TransitionSeries.Sequence durationInFrames={105}>
-        <SceneCTA />
+      {/* Scene 5: CTA (2.5s) */}
+      <TransitionSeries.Sequence durationInFrames={75}>
+        <Scene5 />
       </TransitionSeries.Sequence>
     </TransitionSeries>
   );
