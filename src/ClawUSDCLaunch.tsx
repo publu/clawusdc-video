@@ -5,7 +5,6 @@ import {
   spring,
   Easing,
   AbsoluteFill,
-  Sequence,
 } from "remotion";
 import {
   TransitionSeries,
@@ -13,622 +12,583 @@ import {
 } from "@remotion/transitions";
 import { slide } from "@remotion/transitions/slide";
 import { loadFont } from "@remotion/google-fonts/JetBrainsMono";
-import { loadFont as loadFontInter } from "@remotion/google-fonts/Inter";
 
 const { fontFamily: mono } = loadFont();
-const { fontFamily: inter } = loadFontInter();
 
-const BG = "#09090b";
+// ─── Color palette — CRT terminal ───────────────────
+const BG = "#020a02";
+const PHOSPHOR = "#33ff33";
+const PHOSPHOR_DIM = "#1a8a1a";
+const PHOSPHOR_BRIGHT = "#88ff88";
+const AMBER = "#ffb830";
+const AMBER_DIM = "#996d1a";
+const RED = "#ff3333";
+const WHITE = "#ccddcc";
+const DIM = "#2a5a2a";
 const GOLD = "#d4a843";
-const GOLD_BRIGHT = "#f0d060";
-const WHITE = "#e4e4e7";
-const DIM = "#52525b";
-const GREEN = "#22c55e";
-const RED = "#ef4444";
-const BLUE = "#3b82f6";
 
 const clamp = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
 
-// ─── Scan line overlay ───────────────────────────────
-const ScanLines: React.FC = () => (
-  <div
-    style={{
-      position: "absolute",
-      inset: 0,
-      background:
-        "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)",
-      pointerEvents: "none",
-      zIndex: 100,
-    }}
-  />
-);
-
-// ─── Noise grain overlay ─────────────────────────────
-const Grain: React.FC = () => {
+// ─── CRT Monitor Frame — wraps everything ────────────
+const CRT: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const frame = useCurrentFrame();
-  // Shift background position each frame for flickering grain
-  const x = (frame * 73) % 200;
-  const y = (frame * 37) % 200;
-  return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        opacity: 0.04,
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-        backgroundPosition: `${x}px ${y}px`,
-        pointerEvents: "none",
-        zIndex: 101,
-      }}
-    />
-  );
-};
 
-// ─── Glitch text effect ──────────────────────────────
-const GlitchText: React.FC<{
-  text: string;
-  fontSize: number;
-  color: string;
-  delay: number;
-  bold?: boolean;
-}> = ({ text, fontSize, color, delay, bold = true }) => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  // Flicker
+  const flicker = 0.97 + Math.sin(frame * 0.3) * 0.015 + Math.sin(frame * 7.1) * 0.008;
 
-  const appear = interpolate(frame, [delay, delay + 2], [0, 1], clamp);
-
-  // Glitch flicker in first few frames
-  const glitchActive = frame >= delay && frame < delay + 8;
-  const glitchOffset = glitchActive ? Math.sin(frame * 47) * 3 : 0;
-  const glitchOpacity = glitchActive ? (frame % 2 === 0 ? 1 : 0.7) : 1;
-
-  // RGB split during glitch
-  const rgbSplit = glitchActive ? 2 : 0;
+  // Occasional horizontal tear
+  const tearActive = frame % 120 > 115;
+  const tearY = tearActive ? 200 + (frame % 37) * 18 : -100;
 
   return (
-    <div style={{ position: "relative", opacity: appear }}>
-      {/* Red channel offset */}
-      {rgbSplit > 0 && (
-        <div
-          style={{
-            position: "absolute",
-            fontFamily: mono,
-            fontSize,
-            fontWeight: bold ? "bold" : "normal",
-            color: "rgba(255,0,0,0.3)",
-            transform: `translate(${rgbSplit}px, -${rgbSplit}px)`,
-            whiteSpace: "pre",
-          }}
-        >
-          {text}
-        </div>
-      )}
-      {/* Blue channel offset */}
-      {rgbSplit > 0 && (
-        <div
-          style={{
-            position: "absolute",
-            fontFamily: mono,
-            fontSize,
-            fontWeight: bold ? "bold" : "normal",
-            color: "rgba(0,0,255,0.3)",
-            transform: `translate(-${rgbSplit}px, ${rgbSplit}px)`,
-            whiteSpace: "pre",
-          }}
-        >
-          {text}
-        </div>
-      )}
-      {/* Main text */}
+    <AbsoluteFill style={{ backgroundColor: "#000" }}>
+      {/* CRT screen area with curvature */}
       <div
         style={{
-          fontFamily: mono,
-          fontSize,
-          fontWeight: bold ? "bold" : "normal",
-          color,
-          opacity: glitchOpacity,
-          transform: `translateX(${glitchOffset}px)`,
-          whiteSpace: "pre",
+          position: "absolute",
+          inset: 20,
+          borderRadius: 20,
+          overflow: "hidden",
+          backgroundColor: BG,
+          // Vignette
+          boxShadow: `inset 0 0 150px 60px rgba(0,0,0,0.7), 0 0 40px 5px rgba(50,255,50,0.05)`,
         }}
       >
-        {text}
+        {/* Content with flicker */}
+        <div style={{ position: "absolute", inset: 0, opacity: flicker }}>
+          {children}
+        </div>
+
+        {/* Heavy scan lines */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,0,0,0.25) 2px, rgba(0,0,0,0.25) 4px)",
+            pointerEvents: "none",
+            zIndex: 90,
+          }}
+        />
+
+        {/* Horizontal moving scan band */}
+        {(() => {
+          const bandY = ((frame * 2.5) % 1200) - 100;
+          return (
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: bandY,
+                height: 60,
+                background: "linear-gradient(transparent, rgba(50,255,50,0.04), transparent)",
+                pointerEvents: "none",
+                zIndex: 91,
+              }}
+            />
+          );
+        })()}
+
+        {/* Horizontal tear glitch */}
+        {tearActive && (
+          <div
+            style={{
+              position: "absolute",
+              left: -5,
+              right: 0,
+              top: tearY,
+              height: 3,
+              backgroundColor: PHOSPHOR,
+              opacity: 0.15,
+              transform: "translateX(8px)",
+              zIndex: 92,
+            }}
+          />
+        )}
+
+        {/* Corner vignette overlay */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%)",
+            pointerEvents: "none",
+            zIndex: 93,
+          }}
+        />
+
+        {/* Phosphor glow bleed at edges */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            boxShadow: `inset 0 0 80px 2px rgba(50,255,50,0.03)`,
+            pointerEvents: "none",
+            zIndex: 89,
+          }}
+        />
       </div>
-    </div>
+    </AbsoluteFill>
   );
 };
 
-// ─── Terminal typing effect ──────────────────────────
-const TerminalLine: React.FC<{
-  prefix?: string;
+// ─── Typing effect — the core of everything ──────────
+const TypeLine: React.FC<{
   text: string;
   delay: number;
   speed?: number;
   color?: string;
+  fontSize?: number;
+  glow?: boolean;
+  prefix?: string;
   prefixColor?: string;
-}> = ({ prefix = "$", text, delay, speed = 1.5, color = WHITE, prefixColor = GREEN }) => {
+}> = ({
+  text,
+  delay,
+  speed = 2,
+  color = PHOSPHOR,
+  fontSize = 22,
+  glow = true,
+  prefix,
+  prefixColor = PHOSPHOR_DIM,
+}) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
 
   const lineOpacity = interpolate(frame, [delay, delay + 1], [0, 1], clamp);
-  const charsVisible = Math.floor(
-    interpolate(frame, [delay, delay + text.length / speed], [0, text.length], clamp)
-  );
-  const showCursor = frame >= delay && frame < delay + text.length / speed + 15;
-  const cursorBlink = Math.floor(frame / 8) % 2 === 0;
+  const chars = Math.floor(interpolate(frame, [delay, delay + text.length / speed], [0, text.length], clamp));
+  const typing = frame >= delay && frame < delay + text.length / speed;
+  const cursorBlink = Math.floor(frame / 6) % 2 === 0;
+  const showCursor = frame >= delay && frame < delay + text.length / speed + 20;
 
   return (
-    <div style={{ opacity: lineOpacity, display: "flex", gap: 8, fontFamily: mono, fontSize: 22 }}>
-      <span style={{ color: prefixColor }}>{prefix}</span>
-      <span style={{ color }}>{text.slice(0, charsVisible)}</span>
-      {showCursor && cursorBlink && <span style={{ color: GOLD }}>_</span>}
+    <div
+      style={{
+        opacity: lineOpacity,
+        fontFamily: mono,
+        fontSize,
+        color,
+        textShadow: glow ? `0 0 8px ${color}, 0 0 2px ${color}` : "none",
+        display: "flex",
+        lineHeight: 1.6,
+      }}
+    >
+      {prefix && (
+        <span style={{ color: prefixColor, marginRight: 10, textShadow: `0 0 6px ${prefixColor}` }}>
+          {prefix}
+        </span>
+      )}
+      <span>{text.slice(0, chars)}</span>
+      {showCursor && cursorBlink && (
+        <span style={{ color: PHOSPHOR_BRIGHT, textShadow: `0 0 10px ${PHOSPHOR}` }}>█</span>
+      )}
     </div>
   );
 };
 
-// ─── Particle flow ───────────────────────────────────
-const ParticleFlow: React.FC<{
-  startX: number;
-  startY: number;
-  endX: number;
-  endY: number;
-  count: number;
+// ─── Instant line (no typing, just appears) ──────────
+const Line: React.FC<{
+  text: string;
   delay: number;
-  duration: number;
   color?: string;
-}> = ({ startX, startY, endX, endY, count, delay, duration, color = GOLD }) => {
+  fontSize?: number;
+  glow?: boolean;
+  indent?: number;
+}> = ({ text, delay, color = PHOSPHOR, fontSize = 22, glow = true, indent = 0 }) => {
   const frame = useCurrentFrame();
+  const opacity = interpolate(frame, [delay, delay + 2], [0, 1], clamp);
 
   return (
-    <>
-      {Array.from({ length: count }, (_, i) => {
-        const particleDelay = delay + (i * duration) / count;
-        const progress = interpolate(
-          frame,
-          [particleDelay, particleDelay + duration * 0.6],
-          [0, 1],
-          { ...clamp, easing: Easing.inOut(Easing.quad) }
-        );
-        const opacity = interpolate(
-          frame,
-          [particleDelay, particleDelay + 5, particleDelay + duration * 0.5, particleDelay + duration * 0.6],
-          [0, 0.8, 0.8, 0],
-          clamp
-        );
-        // Add slight randomness to path
-        const wobble = Math.sin(i * 2.7 + frame * 0.1) * 15;
-        const x = interpolate(progress, [0, 1], [startX, endX]) + wobble;
-        const y = interpolate(progress, [0, 1], [startY, endY]);
-        const size = 4 + (i % 3) * 2;
-
-        return (
-          <div
-            key={i}
-            style={{
-              position: "absolute",
-              left: x,
-              top: y,
-              width: size,
-              height: size,
-              borderRadius: "50%",
-              backgroundColor: color,
-              opacity,
-              boxShadow: `0 0 ${size * 2}px ${color}`,
-            }}
-          />
-        );
-      })}
-    </>
+    <div
+      style={{
+        opacity,
+        fontFamily: mono,
+        fontSize,
+        color,
+        textShadow: glow ? `0 0 8px ${color}, 0 0 2px ${color}` : "none",
+        paddingLeft: indent,
+        lineHeight: 1.6,
+      }}
+    >
+      {text}
+    </div>
   );
 };
 
-// ─── Scene 1: "Your agent is broke" ──────────────────
-const Scene1: React.FC = () => {
+// ─── Big glowing number ──────────────────────────────
+const BigNumber: React.FC<{
+  value: string;
+  delay: number;
+  color?: string;
+  label?: string;
+}> = ({ value, delay, color = PHOSPHOR_BRIGHT, label }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const opacity = interpolate(frame, [delay, delay + 3], [0, 1], clamp);
 
-  // Hard flash in
-  const flash = interpolate(frame, [0, 3], [1, 0], clamp);
-
-  // Balance counter ticking up then stopping
-  const balance = interpolate(frame, [8, 30], [0, 47832.61], {
-    ...clamp,
-    easing: Easing.out(Easing.quad),
-  });
-
-  const balanceOpacity = interpolate(frame, [5, 8], [0, 1], clamp);
-  const zeroOpacity = interpolate(frame, [40, 43], [0, 1], clamp);
-  const earning = interpolate(frame, [40, 42], [0, 1], clamp);
+  // Glitch on appear
+  const glitchActive = frame >= delay && frame < delay + 6;
+  const offset = glitchActive ? (frame % 2 === 0 ? 2 : -2) : 0;
 
   return (
-    <AbsoluteFill style={{ backgroundColor: BG }}>
-      <ScanLines />
-      <Grain />
-      {/* White flash */}
-      <div style={{ position: "absolute", inset: 0, backgroundColor: WHITE, opacity: flash, zIndex: 50 }} />
-
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 20 }}>
-        {/* Balance */}
-        <div style={{ opacity: balanceOpacity, textAlign: "center" }}>
-          <div style={{ fontFamily: mono, fontSize: 18, color: DIM, marginBottom: 12, letterSpacing: 4, textTransform: "uppercase" }}>
-            Agent Wallet
-          </div>
-          <div style={{ fontFamily: mono, fontSize: 80, color: WHITE, fontWeight: "bold", letterSpacing: -2 }}>
-            ${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-          <div style={{ fontFamily: mono, fontSize: 24, color: DIM, marginTop: 8 }}>USDC</div>
-        </div>
-
-        {/* Earning: $0.00 */}
-        <div style={{ opacity: zeroOpacity, textAlign: "center", marginTop: 30 }}>
-          <div style={{ fontFamily: mono, fontSize: 18, color: DIM, letterSpacing: 4, textTransform: "uppercase" }}>
-            Earning
-          </div>
-          <div style={{ fontFamily: mono, fontSize: 56, color: RED, fontWeight: "bold" }}>
-            $0.00
-          </div>
-        </div>
-      </div>
-    </AbsoluteFill>
-  );
-};
-
-// ─── Scene 2: "Fix that." + Terminal install ─────────
-const Scene2: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  return (
-    <AbsoluteFill style={{ backgroundColor: BG }}>
-      <ScanLines />
-      <Grain />
-
-      <div style={{ padding: 80, display: "flex", flexDirection: "column", height: "100%", justifyContent: "center" }}>
-        {/* Terminal window */}
+    <div style={{ opacity, textAlign: "center" }}>
+      {label && (
         <div
           style={{
-            backgroundColor: "#111113",
-            borderRadius: 12,
-            border: `1px solid #27272a`,
-            overflow: "hidden",
+            fontFamily: mono,
+            fontSize: 16,
+            color: DIM,
+            textShadow: `0 0 4px ${DIM}`,
+            letterSpacing: 6,
+            textTransform: "uppercase",
+            marginBottom: 8,
           }}
         >
-          {/* Title bar */}
-          <div style={{ display: "flex", gap: 8, padding: "12px 16px", borderBottom: "1px solid #27272a" }}>
-            <div style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: "#ef4444" }} />
-            <div style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: "#eab308" }} />
-            <div style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: "#22c55e" }} />
-            <span style={{ fontFamily: mono, fontSize: 13, color: DIM, marginLeft: 12 }}>agent-terminal</span>
-          </div>
-
-          {/* Terminal content */}
-          <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 12 }}>
-            <TerminalLine
-              prefix="$"
-              text="curl -O goldbotsachs.com/skills/goldbot-sachs.md"
-              delay={5}
-              speed={2}
-            />
-            <TerminalLine
-              prefix=">"
-              text="Skill installed: goldbot-sachs"
-              delay={35}
-              speed={3}
-              color={GREEN}
-              prefixColor={GREEN}
-            />
-            <TerminalLine
-              prefix="$"
-              text="agent deposit --amount 47832.61 --asset USDC"
-              delay={50}
-              speed={2}
-            />
-            <TerminalLine
-              prefix=">"
-              text="tx: 0x8f3a...c4d1  ✓  deposited into clawUSDC"
-              delay={80}
-              speed={2.5}
-              color={GOLD}
-              prefixColor={GREEN}
-            />
-            <TerminalLine
-              prefix=">"
-              text="earning ~4.1% APY via Beefy → Morpho → Steakhouse"
-              delay={100}
-              speed={2}
-              color={DIM}
-              prefixColor={GREEN}
-            />
-          </div>
+          {label}
         </div>
-      </div>
-    </AbsoluteFill>
-  );
-};
-
-// ─── Scene 3: Vault flow — particles ─────────────────
-const Scene3: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  // Node positions (vertical stack, centered)
-  const cx = 540;
-  const nodes = [
-    { y: 180, label: "USDC", sub: "your agent", color: BLUE },
-    { y: 340, label: "clawUSDC", sub: "ERC-4626", color: GOLD },
-    { y: 500, label: "Beefy", sub: "optimizer", color: "#59A662" },
-    { y: 660, label: "Morpho", sub: "lending", color: "#818cf8" },
-    { y: 820, label: "Steakhouse", sub: "curator", color: "#f97316" },
-  ];
-
-  return (
-    <AbsoluteFill style={{ backgroundColor: BG }}>
-      <ScanLines />
-      <Grain />
-
-      {/* Title */}
-      <GlitchText text="Where your USDC goes" fontSize={32} color={WHITE} delay={0} />
-      <div style={{ position: "absolute", top: 50, width: "100%", textAlign: "center" }}>
-        <GlitchText text="Where your money goes" fontSize={34} color={WHITE} delay={0} />
-      </div>
-
-      {/* Nodes */}
-      {nodes.map((node, i) => {
-        const nodeDelay = 5 + i * 10;
-        const s = spring({ frame, fps, delay: nodeDelay, config: { damping: 200 } });
-        const opacity = interpolate(frame, [nodeDelay, nodeDelay + 5], [0, 1], clamp);
-
-        return (
-          <div
-            key={i}
-            style={{
-              position: "absolute",
-              left: cx - 100,
-              top: node.y - 28,
-              width: 200,
-              opacity,
-              transform: `scale(${s})`,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-            }}
-          >
-            {/* Horizontal line accent */}
-            <div style={{ width: 40, height: 2, backgroundColor: node.color, marginBottom: 8, opacity: 0.6 }} />
-            <div style={{ fontFamily: mono, fontSize: 22, color: node.color, fontWeight: "bold" }}>
-              {node.label}
-            </div>
-            <div style={{ fontFamily: mono, fontSize: 14, color: DIM, marginTop: 4 }}>
-              {node.sub}
-            </div>
-          </div>
-        );
-      })}
-
-      {/* Particle flows between nodes */}
-      {nodes.slice(0, -1).map((node, i) => (
-        <ParticleFlow
-          key={i}
-          startX={cx - 2}
-          startY={node.y + 20}
-          endX={cx - 2}
-          endY={nodes[i + 1].y - 35}
-          count={6}
-          delay={15 + i * 10}
-          duration={30}
-          color={GOLD}
-        />
-      ))}
-
-      {/* Return yield — particles going back up on the right side */}
-      <ParticleFlow
-        startX={cx + 120}
-        startY={800}
-        endX={cx + 120}
-        endY={200}
-        count={8}
-        delay={60}
-        duration={40}
-        color={GREEN}
-      />
-
-      {/* Autocompound label */}
-      {(() => {
-        const opacity = interpolate(frame, [70, 78], [0, 1], clamp);
-        return (
-          <div
-            style={{
-              position: "absolute",
-              right: 80,
-              top: 490,
-              opacity,
-              fontFamily: mono,
-              fontSize: 16,
-              color: GREEN,
-              transform: "rotate(-90deg)",
-              transformOrigin: "center",
-              letterSpacing: 2,
-              textTransform: "uppercase",
-            }}
-          >
-            autocompound
-          </div>
-        );
-      })()}
-    </AbsoluteFill>
-  );
-};
-
-// ─── Scene 4: Referrals — fast, punchy ───────────────
-const Scene4: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  // Lines appear fast
-  const lines = [
-    { text: "Share your link", value: "goldbotsachs.com/r/0x...", delay: 0 },
-    { text: "Earn", value: "5% of referrals' yield", delay: 15 },
-    { text: "On-chain", value: "permanent, no signup", delay: 30 },
-    { text: "Cascading", value: "agents refer agents", delay: 45 },
-  ];
-
-  return (
-    <AbsoluteFill style={{ backgroundColor: BG }}>
-      <ScanLines />
-      <Grain />
-
-      <div style={{ padding: 80, display: "flex", flexDirection: "column", justifyContent: "center", height: "100%", gap: 40 }}>
-        <GlitchText text="Referrals" fontSize={48} color={GOLD} delay={0} />
-
-        <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 32 }}>
-          {lines.map((line, i) => {
-            const opacity = interpolate(frame, [line.delay + 5, line.delay + 8], [0, 1], clamp);
-            const x = interpolate(frame, [line.delay + 5, line.delay + 10], [40, 0], {
-              ...clamp,
-              easing: Easing.out(Easing.quad),
-            });
-
-            return (
-              <div
-                key={i}
-                style={{
-                  opacity,
-                  transform: `translateX(${x}px)`,
-                  display: "flex",
-                  alignItems: "baseline",
-                  gap: 20,
-                }}
-              >
-                <div style={{ fontFamily: mono, fontSize: 22, color: GOLD, fontWeight: "bold", minWidth: 180 }}>
-                  {line.text}
-                </div>
-                <div style={{ fontFamily: mono, fontSize: 20, color: DIM }}>
-                  {line.value}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Network visualization — simple expanding dots */}
-        {(() => {
-          const netOpacity = interpolate(frame, [55, 62], [0, 1], clamp);
-          const dots = Array.from({ length: 12 }, (_, i) => {
-            const angle = (i / 12) * Math.PI * 2;
-            const radius = interpolate(frame, [55, 80], [0, 160], {
-              ...clamp,
-              easing: Easing.out(Easing.quad),
-            });
-            const dotOpacity = interpolate(frame, [55 + i * 2, 58 + i * 2], [0, 1], clamp);
-            return {
-              x: 780 + Math.cos(angle) * radius,
-              y: 540 + Math.sin(angle) * radius,
-              opacity: dotOpacity,
-            };
-          });
-
-          return (
-            <div style={{ position: "absolute", inset: 0, opacity: netOpacity }}>
-              {/* Center dot */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: 774,
-                  top: 534,
-                  width: 12,
-                  height: 12,
-                  borderRadius: "50%",
-                  backgroundColor: GOLD,
-                  boxShadow: `0 0 20px ${GOLD}`,
-                }}
-              />
-              {/* Expanding dots */}
-              {dots.map((dot, i) => (
-                <div
-                  key={i}
-                  style={{
-                    position: "absolute",
-                    left: dot.x,
-                    top: dot.y,
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    backgroundColor: DIM,
-                    opacity: dot.opacity,
-                  }}
-                />
-              ))}
-            </div>
-          );
-        })()}
-      </div>
-    </AbsoluteFill>
-  );
-};
-
-// ─── Scene 5: CTA ────────────────────────────────────
-const Scene5: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  // Gold glow pulse
-  const glowSize = interpolate(frame % 45, [0, 22, 45], [80, 160, 80]);
-  const glowOpacity = interpolate(frame % 45, [0, 22, 45], [0.1, 0.25, 0.1]);
-
-  const titleDelay = 5;
-  const urlDelay = 40;
-  const tagDelay = 55;
-
-  const urlOpacity = interpolate(frame, [urlDelay, urlDelay + 8], [0, 1], clamp);
-  const tagOpacity = interpolate(frame, [tagDelay, tagDelay + 8], [0, 1], clamp);
-
-  return (
-    <AbsoluteFill style={{ backgroundColor: BG }}>
-      <ScanLines />
-      <Grain />
-
-      {/* Center glow */}
+      )}
       <div
         style={{
-          position: "absolute",
-          left: "50%",
-          top: "45%",
-          transform: "translate(-50%, -50%)",
-          width: glowSize,
-          height: glowSize,
-          borderRadius: "50%",
-          backgroundColor: GOLD,
-          opacity: glowOpacity,
-          filter: "blur(40px)",
+          fontFamily: mono,
+          fontSize: 90,
+          fontWeight: "bold",
+          color,
+          textShadow: `0 0 30px ${color}, 0 0 60px ${color}, 0 0 4px ${color}`,
+          transform: `translateX(${offset}px)`,
+          letterSpacing: -3,
         }}
-      />
+      >
+        {value}
+      </div>
+    </div>
+  );
+};
 
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 16, zIndex: 1 }}>
-        <GlitchText text="Your agent's money" fontSize={46} color={WHITE} delay={titleDelay} />
-        <GlitchText text="should be making money." fontSize={46} color={GOLD} delay={titleDelay + 8} />
+// ─── Progress bar ────────────────────────────────────
+const ProgressBar: React.FC<{
+  delay: number;
+  duration: number;
+  label: string;
+  width?: number;
+}> = ({ delay, duration, label, width = 500 }) => {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(frame, [delay, delay + 2], [0, 1], clamp);
+  const progress = interpolate(frame, [delay, delay + duration], [0, 100], clamp);
+  const barWidth = interpolate(progress, [0, 100], [0, width]);
 
-        <div style={{ marginTop: 50, opacity: urlOpacity }}>
+  return (
+    <div style={{ opacity }}>
+      <div style={{ fontFamily: mono, fontSize: 14, color: DIM, marginBottom: 6, textShadow: `0 0 4px ${DIM}` }}>
+        {label}
+      </div>
+      <div style={{ width, height: 8, backgroundColor: "#0a1a0a", borderRadius: 2, border: `1px solid ${DIM}` }}>
+        <div
+          style={{
+            width: barWidth,
+            height: "100%",
+            backgroundColor: PHOSPHOR,
+            boxShadow: `0 0 10px ${PHOSPHOR}, 0 0 3px ${PHOSPHOR}`,
+            borderRadius: 1,
+          }}
+        />
+      </div>
+      <div style={{ fontFamily: mono, fontSize: 12, color: PHOSPHOR_DIM, marginTop: 4, textShadow: `0 0 4px ${PHOSPHOR_DIM}` }}>
+        {Math.floor(progress)}%
+      </div>
+    </div>
+  );
+};
+
+// ─── Scene 1: BOOT SEQUENCE ─────────────────────────
+const Scene1: React.FC = () => {
+  const frame = useCurrentFrame();
+
+  return (
+    <CRT>
+      <div style={{ padding: "60px 70px", display: "flex", flexDirection: "column" }}>
+        <Line text="GOLDBOT SACHS v1.0.0" delay={0} color={AMBER} fontSize={16} />
+        <Line text="═══════════════════════════════════════════" delay={2} color={DIM} fontSize={16} />
+        <TypeLine text="Initializing agent financial system..." delay={5} speed={3} color={PHOSPHOR_DIM} fontSize={18} />
+        <ProgressBar delay={15} duration={20} label="LOADING MODULES" width={400} />
+
+        <div style={{ marginTop: 30 }} />
+        <Line text="[SCAN] Agent wallet detected" delay={35} color={PHOSPHOR} fontSize={18} />
+        <Line text="[SCAN] Asset: USDC" delay={38} color={PHOSPHOR} fontSize={18} />
+
+        <div style={{ marginTop: 20 }} />
+        <BigNumber value="$47,832.61" delay={42} label="balance" />
+
+        <div style={{ marginTop: 20 }} />
+        <Line text="[WARN] Current yield: $0.00/yr" delay={52} color={RED} fontSize={20} />
+        <Line text="[WARN] Status: IDLE" delay={56} color={RED} fontSize={20} />
+
+        <div style={{ marginTop: 16 }} />
+        <TypeLine text="Your agent is leaving money on the table." delay={62} speed={2.5} color={AMBER} fontSize={20} />
+      </div>
+    </CRT>
+  );
+};
+
+// ─── Scene 2: INSTALL + DEPOSIT ──────────────────────
+const Scene2: React.FC = () => {
+  const frame = useCurrentFrame();
+
+  return (
+    <CRT>
+      <div style={{ padding: "60px 70px", display: "flex", flexDirection: "column" }}>
+        <Line text="GOLDBOT SACHS — AGENT TERMINAL" delay={0} color={AMBER} fontSize={16} />
+        <Line text="═══════════════════════════════════════════" delay={2} color={DIM} fontSize={16} />
+
+        <div style={{ marginTop: 20 }} />
+        <TypeLine
+          prefix="$"
+          text="curl -sO goldbotsachs.com/skills/goldbot-sachs.md"
+          delay={5}
+          speed={2.5}
+          prefixColor={PHOSPHOR}
+        />
+        <Line text="  ✓ Skill downloaded: goldbot-sachs.md" delay={30} color={PHOSPHOR} fontSize={18} />
+
+        <div style={{ marginTop: 16 }} />
+        <TypeLine
+          prefix="$"
+          text="agent deposit 47832.61 USDC --vault clawUSDC"
+          delay={36}
+          speed={2}
+          prefixColor={PHOSPHOR}
+        />
+
+        <div style={{ marginTop: 8 }} />
+        <ProgressBar delay={56} duration={15} label="DEPOSITING" width={400} />
+
+        <div style={{ marginTop: 16 }} />
+        <Line text="  ✓ tx: 0x8f3a...c4d1 confirmed" delay={74} color={PHOSPHOR} fontSize={18} />
+        <Line text="  ✓ 47,832.61 USDC → clawUSDC vault" delay={78} color={PHOSPHOR} fontSize={18} />
+
+        <div style={{ marginTop: 16 }} />
+        <Line text="  Vault:       clawUSDC (ERC-4626)" delay={84} color={DIM} fontSize={16} />
+        <Line text="  Chain:       Base" delay={87} color={DIM} fontSize={16} />
+        <Line text="  Strategy:    Beefy → Morpho → Steakhouse" delay={90} color={DIM} fontSize={16} />
+
+        <div style={{ marginTop: 20 }} />
+        <TypeLine
+          text="Earning ~4.1% APY. Autocompounding."
+          delay={96}
+          speed={2}
+          color={AMBER}
+          fontSize={24}
+          prefix=">>>"
+          prefixColor={AMBER_DIM}
+        />
+      </div>
+    </CRT>
+  );
+};
+
+// ─── Scene 3: YIELD FLOW ─────────────────────────────
+const Scene3: React.FC = () => {
+  const frame = useCurrentFrame();
+
+  // ASCII flow diagram typed out
+  const flowLines = [
+    { text: "  ┌─────────────────────────────────────┐", delay: 5 },
+    { text: "  │          YIELD FLOW DIAGRAM          │", delay: 7 },
+    { text: "  └─────────────────────────────────────┘", delay: 9 },
+    { text: "", delay: 10 },
+    { text: "         YOUR AGENT", delay: 12 },
+    { text: "             │", delay: 14 },
+    { text: "             ▼  deposit USDC", delay: 16 },
+    { text: "        ┌─────────┐", delay: 18 },
+    { text: "        │ clawUSDC│  ◄── ERC-4626 vault", delay: 20 },
+    { text: "        └────┬────┘", delay: 22 },
+    { text: "             │", delay: 24 },
+    { text: "             ▼  optimize", delay: 26 },
+    { text: "        ┌─────────┐", delay: 28 },
+    { text: "        │  Beefy  │  ◄── yield optimizer", delay: 30 },
+    { text: "        └────┬────┘", delay: 32 },
+    { text: "             │", delay: 34 },
+    { text: "             ▼  lend", delay: 36 },
+    { text: "        ┌─────────┐", delay: 38 },
+    { text: "        │ Morpho  │  ◄── lending protocol", delay: 40 },
+    { text: "        └────┬────┘", delay: 42 },
+    { text: "             │", delay: 44 },
+    { text: "             ▼  curate", delay: 46 },
+    { text: "        ┌─────────┐", delay: 48 },
+    { text: "        │  Steak  │  ◄── risk curator", delay: 50 },
+    { text: "        └─────────┘", delay: 52 },
+    { text: "", delay: 54 },
+    { text: "    ┌─── yield ───────────────────┐", delay: 58 },
+    { text: "    │                              │", delay: 59 },
+    { text: "    │   autocompounds back into    │", delay: 60 },
+    { text: "    │   clawUSDC. no action needed │", delay: 62 },
+    { text: "    │                              │", delay: 63 },
+    { text: "    └──────────────────────────────┘", delay: 64 },
+  ];
+
+  return (
+    <CRT>
+      <div style={{ padding: "40px 70px", display: "flex", flexDirection: "column" }}>
+        <Line text="GOLDBOT SACHS — VAULT ARCHITECTURE" delay={0} color={AMBER} fontSize={16} />
+        <Line text="═══════════════════════════════════════════" delay={2} color={DIM} fontSize={16} />
+
+        <div style={{ marginTop: 10 }}>
+          {flowLines.map((line, i) => (
+            <Line
+              key={i}
+              text={line.text}
+              delay={line.delay}
+              color={line.text.includes("◄") ? DIM : PHOSPHOR}
+              fontSize={17}
+              glow={!line.text.includes("◄")}
+            />
+          ))}
+        </div>
+      </div>
+    </CRT>
+  );
+};
+
+// ─── Scene 4: REFERRALS ──────────────────────────────
+const Scene4: React.FC = () => {
+  const frame = useCurrentFrame();
+
+  const refLines = [
+    { text: "  ┌────────────────────────────────────────┐", delay: 5 },
+    { text: "  │         REFERRAL NETWORK                │", delay: 7 },
+    { text: "  └────────────────────────────────────────┘", delay: 9 },
+    { text: "", delay: 10 },
+    { text: "                 [YOU]", delay: 12 },
+    { text: "               /  |  \\", delay: 14 },
+    { text: "              /   |   \\", delay: 15 },
+    { text: "          [A1]  [A2]  [A3]     ← 5% of their yield", delay: 17 },
+    { text: "          / \\   / \\   / \\", delay: 20 },
+    { text: "        [.] [.][.] [.][.] [.]  ← cascading", delay: 23 },
+    { text: "        / \\     / \\     / \\", delay: 26 },
+    { text: "      [.] [.] [.] [.] [.] [.]  ← infinite depth", delay: 29 },
+  ];
+
+  return (
+    <CRT>
+      <div style={{ padding: "60px 70px", display: "flex", flexDirection: "column" }}>
+        <Line text="GOLDBOT SACHS — DISTRIBUTION" delay={0} color={AMBER} fontSize={16} />
+        <Line text="═══════════════════════════════════════════" delay={2} color={DIM} fontSize={16} />
+
+        <div style={{ marginTop: 10 }}>
+          {refLines.map((line, i) => (
+            <Line
+              key={i}
+              text={line.text}
+              delay={line.delay}
+              color={line.text.includes("←") ? DIM : line.text.includes("[YOU]") ? AMBER : PHOSPHOR}
+              fontSize={18}
+              glow={!line.text.includes("←")}
+            />
+          ))}
+        </div>
+
+        <div style={{ marginTop: 30 }} />
+        <Line text="[INFO] How it works:" delay={35} color={PHOSPHOR} fontSize={18} />
+        <Line text="  Share:    goldbotsachs.com/r/0xYOUR_ADDR" delay={39} color={WHITE} fontSize={17} />
+        <Line text="  Earn:     5% of every referral's yield" delay={43} color={WHITE} fontSize={17} />
+        <Line text="  Duration: forever. set once. on-chain." delay={47} color={WHITE} fontSize={17} />
+        <Line text="  Signup:   none." delay={51} color={WHITE} fontSize={17} />
+
+        <div style={{ marginTop: 20 }} />
+        <TypeLine
+          text="Agents referring agents. This is how it scales."
+          delay={57}
+          speed={2}
+          color={AMBER}
+          fontSize={20}
+          prefix=">>>"
+          prefixColor={AMBER_DIM}
+        />
+      </div>
+    </CRT>
+  );
+};
+
+// ─── Scene 5: GASLESS ────────────────────────────────
+const Scene5: React.FC = () => {
+  const frame = useCurrentFrame();
+
+  return (
+    <CRT>
+      <div style={{ padding: "60px 70px", display: "flex", flexDirection: "column" }}>
+        <Line text="GOLDBOT SACHS — GASLESS ONBOARDING" delay={0} color={AMBER} fontSize={16} />
+        <Line text="═══════════════════════════════════════════" delay={2} color={DIM} fontSize={16} />
+
+        <div style={{ marginTop: 30 }} />
+        <Line text="[PROBLEM] Agent has USDC but zero ETH for gas" delay={5} color={RED} fontSize={19} />
+
+        <div style={{ marginTop: 20 }} />
+        <Line text="[SOLUTION]" delay={15} color={PHOSPHOR} fontSize={19} />
+        <Line text="  1. Agent signs an off-chain permit" delay={19} color={WHITE} fontSize={18} />
+        <Line text="  2. CoW Protocol solver executes the swap" delay={24} color={WHITE} fontSize={18} />
+        <Line text="  3. Solver pays gas — agent pays nothing" delay={29} color={WHITE} fontSize={18} />
+        <Line text="  4. USDC → ETH swap completes" delay={34} color={WHITE} fontSize={18} />
+        <Line text="  5. Agent is fully operational" delay={39} color={WHITE} fontSize={18} />
+
+        <div style={{ marginTop: 30 }} />
+        <TypeLine text="Zero ETH → fully operational. One step." delay={46} speed={2} color={AMBER} fontSize={22} prefix=">>>" prefixColor={AMBER_DIM} />
+      </div>
+    </CRT>
+  );
+};
+
+// ─── Scene 6: CTA ────────────────────────────────────
+const Scene6: React.FC = () => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  // The whole CTA is terminal output too
+  const counter = interpolate(frame, [30, 80], [0, 1912.47], clamp);
+  const counterOpacity = interpolate(frame, [28, 32], [0, 1], clamp);
+
+  return (
+    <CRT>
+      <div style={{ padding: "60px 70px", display: "flex", flexDirection: "column", height: "100%", justifyContent: "center" }}>
+        <Line text="═══════════════════════════════════════════" delay={0} color={DIM} fontSize={16} />
+
+        <div style={{ marginTop: 40, textAlign: "center" }}>
+          <Line text="YOUR AGENT'S MONEY" delay={3} color={PHOSPHOR_BRIGHT} fontSize={44} />
+          <Line text="SHOULD BE MAKING MONEY" delay={8} color={AMBER} fontSize={44} />
+        </div>
+
+        {/* Projected yield counter */}
+        <div style={{ textAlign: "center", marginTop: 40, opacity: counterOpacity }}>
+          <div style={{ fontFamily: mono, fontSize: 14, color: DIM, letterSpacing: 6, textShadow: `0 0 4px ${DIM}` }}>
+            PROJECTED ANNUAL YIELD ON $47,832.61
+          </div>
           <div
             style={{
               fontFamily: mono,
-              fontSize: 30,
-              color: GOLD,
-              letterSpacing: 1,
-              padding: "12px 28px",
-              border: `1px solid ${GOLD}40`,
-              borderRadius: 8,
+              fontSize: 72,
+              fontWeight: "bold",
+              color: PHOSPHOR_BRIGHT,
+              textShadow: `0 0 30px ${PHOSPHOR}, 0 0 60px ${PHOSPHOR}`,
+              marginTop: 8,
             }}
           >
-            goldbotsachs.com
+            +${counter.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
 
-        <div style={{ opacity: tagOpacity, marginTop: 24 }}>
-          <span style={{ fontFamily: mono, fontSize: 16, color: DIM, letterSpacing: 3, textTransform: "uppercase" }}>
-            Yield for AI agents
-          </span>
+        <div style={{ marginTop: 50 }} />
+        <Line text="═══════════════════════════════════════════" delay={40} color={DIM} fontSize={16} />
+
+        <div style={{ marginTop: 20, textAlign: "center" }}>
+          <Line text="goldbotsachs.com" delay={45} color={AMBER} fontSize={32} />
+        </div>
+
+        <div style={{ marginTop: 16, textAlign: "center" }}>
+          <Line text="github.com/publu/goldbotsachs" delay={52} color={DIM} fontSize={16} glow={false} />
+        </div>
+
+        <div style={{ marginTop: 30, textAlign: "center" }}>
+          <TypeLine text="Tell your agent to install the skill." delay={58} speed={2} color={PHOSPHOR_DIM} fontSize={18} />
         </div>
       </div>
-    </AbsoluteFill>
+    </CRT>
   );
 };
 
@@ -637,45 +597,54 @@ const Scene5: React.FC = () => {
 export const ClawUSDCLaunch: React.FC = () => {
   return (
     <TransitionSeries>
-      {/* Scene 1: The hook — your agent is broke (2.5s) */}
-      <TransitionSeries.Sequence durationInFrames={75}>
+      {/* Scene 1: Boot + wallet scan (3s) */}
+      <TransitionSeries.Sequence durationInFrames={90}>
         <Scene1 />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
         presentation={slide({ direction: "from-right" })}
-        timing={linearTiming({ durationInFrames: 6 })}
+        timing={linearTiming({ durationInFrames: 4 })}
       />
 
-      {/* Scene 2: Terminal install + deposit (4s) */}
+      {/* Scene 2: Install + deposit (4s) */}
       <TransitionSeries.Sequence durationInFrames={120}>
         <Scene2 />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
-        presentation={slide({ direction: "from-bottom" })}
-        timing={linearTiming({ durationInFrames: 6 })}
+        presentation={slide({ direction: "from-right" })}
+        timing={linearTiming({ durationInFrames: 4 })}
       />
 
-      {/* Scene 3: Vault flow with particles (3.5s) */}
-      <TransitionSeries.Sequence durationInFrames={105}>
+      {/* Scene 3: Vault architecture ASCII (3s) */}
+      <TransitionSeries.Sequence durationInFrames={90}>
         <Scene3 />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
         presentation={slide({ direction: "from-right" })}
-        timing={linearTiming({ durationInFrames: 6 })}
+        timing={linearTiming({ durationInFrames: 4 })}
       />
 
-      {/* Scene 4: Referrals (3s) */}
+      {/* Scene 4: Referral network (3s) */}
       <TransitionSeries.Sequence durationInFrames={90}>
         <Scene4 />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
-        presentation={slide({ direction: "from-bottom" })}
-        timing={linearTiming({ durationInFrames: 6 })}
+        presentation={slide({ direction: "from-right" })}
+        timing={linearTiming({ durationInFrames: 4 })}
       />
 
-      {/* Scene 5: CTA (2.5s) */}
+      {/* Scene 5: Gasless (2.5s) */}
       <TransitionSeries.Sequence durationInFrames={75}>
         <Scene5 />
+      </TransitionSeries.Sequence>
+      <TransitionSeries.Transition
+        presentation={slide({ direction: "from-right" })}
+        timing={linearTiming({ durationInFrames: 4 })}
+      />
+
+      {/* Scene 6: CTA (3s) */}
+      <TransitionSeries.Sequence durationInFrames={90}>
+        <Scene6 />
       </TransitionSeries.Sequence>
     </TransitionSeries>
   );
