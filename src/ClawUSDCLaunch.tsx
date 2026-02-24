@@ -154,12 +154,12 @@ const SceneBoot: React.FC = () => {
       <div style={{ position: "absolute", inset: 0, backgroundColor: PHOSPHOR, opacity: flash, zIndex: 50 }} />
       <MatrixRain delay={0} duration={50} density={20} />
       <Center gap={12}>
-        <Line text="╔════════════════════════════════════════╗" delay={4} color={DIM} fontSize={15} center />
-        <Line text="║                                        ║" delay={4} color={DIM} fontSize={15} center />
-        <Line text="║   G O L D B O T   S A C H S   v1.0    ║" delay={6} color={AMBER} fontSize={15} center />
-        <Line text="║   Yield infrastructure for AI agents   ║" delay={8} color={AMBER_DIM} fontSize={15} center />
-        <Line text="║                                        ║" delay={4} color={DIM} fontSize={15} center />
-        <Line text="╚════════════════════════════════════════╝" delay={10} color={DIM} fontSize={15} center />
+        <Line text="╔══════════════════════════════════════════╗" delay={4} color={DIM} fontSize={28} center />
+        <Line text="║                                          ║" delay={4} color={DIM} fontSize={28} center />
+        <Line text="║  G O L D B O T   S A C H S   v1.0  ║" delay={6} color={AMBER} fontSize={28} center />
+        <Line text="║  Yield infrastructure for AI agents  ║" delay={8} color={AMBER_DIM} fontSize={28} center />
+        <Line text="║                                          ║" delay={4} color={DIM} fontSize={28} center />
+        <Line text="╚══════════════════════════════════════════╝" delay={10} color={DIM} fontSize={28} center />
         <div style={{ height: 20 }} />
         <Spinner delay={14} duration={12} label="Connecting to Base..." doneLabel="Base (8453)" center />
         <Spinner delay={17} duration={12} label="Loading vault..." doneLabel="clawUSDC ready" center />
