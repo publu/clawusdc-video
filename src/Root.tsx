@@ -1,16 +1,16 @@
 import { Composition } from "remotion";
 import { ClawUSDCLaunch } from "./ClawUSDCLaunch";
 
-// 75+120+150+120+120+120+150+120+135+90+120 = 1320
-// minus 10 transitions * 8 = 80
-// = 1240 frames / 30fps = ~41 seconds
+// 60+105+165+135+180+105+75+120 = 945
+// minus 7 transitions * 8 = 56
+// = 889 frames / 30fps = ~30 seconds
 export const RemotionRoot: React.FC = () => {
   return (
     <>
       <Composition
         id="ClawUSDCLaunch"
         component={ClawUSDCLaunch}
-        durationInFrames={1240}
+        durationInFrames={889}
         fps={30}
         width={1080}
         height={1080}

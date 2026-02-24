@@ -10,13 +10,11 @@ import {
   TransitionSeries,
   linearTiming,
 } from "@remotion/transitions";
-import { slide } from "@remotion/transitions/slide";
 import { fade } from "@remotion/transitions/fade";
 import { loadFont } from "@remotion/google-fonts/JetBrainsMono";
 
 const { fontFamily: mono } = loadFont();
 
-// ─── Colors ──────────────────────────────────────────
 const BG = "#020a02";
 const PHOSPHOR = "#33ff33";
 const PHOSPHOR_DIM = "#1a8a1a";
@@ -28,580 +26,244 @@ const WHITE = "#ccddcc";
 const DIM = "#2a5a2a";
 const CYAN = "#33ffee";
 
-const clamp = {
-  extrapolateLeft: "clamp" as const,
-  extrapolateRight: "clamp" as const,
-};
+const DEFAULT_REFERRER = "0x8fC068436E798997C29b767ef559a8ba51e253Fb";
 
-// ─── CRT Monitor ─────────────────────────────────────
+const clamp = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
+
+// Assume ~4 words/sec reading speed for motion graphics
+// At 30fps: ~7.5 frames per word of reading time needed
+
+// ─── CRT ─────────────────────────────────────────────
 const CRT: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const frame = useCurrentFrame();
-  const flicker =
-    0.97 + Math.sin(frame * 0.3) * 0.015 + Math.sin(frame * 7.1) * 0.008;
+  const flicker = 0.97 + Math.sin(frame * 0.3) * 0.015 + Math.sin(frame * 7.1) * 0.008;
   const tearActive = frame % 150 > 143;
   const tearY = tearActive ? 200 + ((frame % 37) * 18) : -100;
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
-      <div
-        style={{
-          position: "absolute",
-          inset: 20,
-          borderRadius: 20,
-          overflow: "hidden",
-          backgroundColor: BG,
-          boxShadow: `inset 0 0 150px 60px rgba(0,0,0,0.7), 0 0 40px 5px rgba(50,255,50,0.05)`,
-        }}
-      >
-        <div style={{ position: "absolute", inset: 0, opacity: flicker }}>
-          {children}
-        </div>
-        {/* Scan lines */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,0,0,0.25) 2px, rgba(0,0,0,0.25) 4px)",
-            pointerEvents: "none",
-            zIndex: 90,
-          }}
-        />
-        {/* Moving band */}
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            top: ((frame * 2) % 1200) - 100,
-            height: 60,
-            background:
-              "linear-gradient(transparent, rgba(50,255,50,0.04), transparent)",
-            pointerEvents: "none",
-            zIndex: 91,
-          }}
-        />
-        {/* Tear */}
-        {tearActive && (
-          <div
-            style={{
-              position: "absolute",
-              left: -5,
-              right: 0,
-              top: tearY,
-              height: 3,
-              backgroundColor: PHOSPHOR,
-              opacity: 0.15,
-              transform: "translateX(8px)",
-              zIndex: 92,
-            }}
-          />
-        )}
-        {/* Vignette */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%)",
-            pointerEvents: "none",
-            zIndex: 93,
-          }}
-        />
+      <div style={{
+        position: "absolute", inset: 20, borderRadius: 20, overflow: "hidden", backgroundColor: BG,
+        boxShadow: `inset 0 0 150px 60px rgba(0,0,0,0.7), 0 0 40px 5px rgba(50,255,50,0.05)`,
+      }}>
+        <div style={{ position: "absolute", inset: 0, opacity: flicker }}>{children}</div>
+        <div style={{ position: "absolute", inset: 0, background: "repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,0,0,0.25) 2px, rgba(0,0,0,0.25) 4px)", pointerEvents: "none", zIndex: 90 }} />
+        <div style={{ position: "absolute", left: 0, right: 0, top: ((frame * 2) % 1200) - 100, height: 60, background: "linear-gradient(transparent, rgba(50,255,50,0.04), transparent)", pointerEvents: "none", zIndex: 91 }} />
+        {tearActive && <div style={{ position: "absolute", left: -5, right: 0, top: tearY, height: 3, backgroundColor: PHOSPHOR, opacity: 0.15, transform: "translateX(8px)", zIndex: 92 }} />}
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%)", pointerEvents: "none", zIndex: 93 }} />
       </div>
     </AbsoluteFill>
   );
 };
 
 // ─── Matrix rain ─────────────────────────────────────
-const MatrixRain: React.FC<{
-  delay: number;
-  duration: number;
-  density?: number;
-}> = ({ delay, duration, density = 25 }) => {
+const MatrixRain: React.FC<{ delay: number; duration: number; density?: number }> = ({ delay, duration, density = 25 }) => {
   const frame = useCurrentFrame();
-  const opacity = interpolate(
-    frame,
-    [delay, delay + 8, delay + duration - 8, delay + duration],
-    [0, 0.5, 0.5, 0],
-    clamp
-  );
+  const opacity = interpolate(frame, [delay, delay + 8, delay + duration - 8, delay + duration], [0, 0.5, 0.5, 0], clamp);
   const chars = "01アイウエオカキクケコ$¥€£₿";
-  const columns = Array.from({ length: density }, (_, i) => ({
-    x: (i / density) * 1040 + 20,
-    speed: 3 + ((i * 7.3) % 5),
-    offset: (i * 137) % 400,
-    seed: i * 31,
-  }));
-
+  const columns = Array.from({ length: density }, (_, i) => ({ x: (i / density) * 1040 + 20, speed: 3 + ((i * 7.3) % 5), offset: (i * 137) % 400, seed: i * 31 }));
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        opacity,
-        zIndex: 5,
-        overflow: "hidden",
-      }}
-    >
-      {columns.map((col, ci) =>
-        Array.from({ length: 8 }, (_, j) => {
-          const y =
-            ((frame - delay) * col.speed + col.offset + j * 28) % 1200 - 100;
-          const charIndex =
-            ((col.seed + j * 17 + Math.floor(frame / 3)) * 7) % chars.length;
-          return (
-            <div
-              key={`${ci}-${j}`}
-              style={{
-                position: "absolute",
-                left: col.x,
-                top: y,
-                fontFamily: mono,
-                fontSize: 14,
-                color: j === 0 ? PHOSPHOR_BRIGHT : PHOSPHOR,
-                opacity: j === 0 ? 1 : Math.max(0, 0.3 - j * 0.03),
-                textShadow: j === 0 ? `0 0 10px ${PHOSPHOR_BRIGHT}` : "none",
-              }}
-            >
-              {chars[charIndex]}
-            </div>
-          );
-        })
-      )}
+    <div style={{ position: "absolute", inset: 0, opacity, zIndex: 5, overflow: "hidden" }}>
+      {columns.map((col, ci) => Array.from({ length: 8 }, (_, j) => {
+        const y = ((frame - delay) * col.speed + col.offset + j * 28) % 1200 - 100;
+        const charIndex = ((col.seed + j * 17 + Math.floor(frame / 3)) * 7) % chars.length;
+        return <div key={`${ci}-${j}`} style={{ position: "absolute", left: col.x, top: y, fontFamily: mono, fontSize: 14, color: j === 0 ? PHOSPHOR_BRIGHT : PHOSPHOR, opacity: j === 0 ? 1 : Math.max(0, 0.3 - j * 0.03), textShadow: j === 0 ? `0 0 10px ${PHOSPHOR_BRIGHT}` : "none" }}>{chars[charIndex]}</div>;
+      }))}
     </div>
   );
 };
 
-// ─── Typing line ─────────────────────────────────────
-const TypeLine: React.FC<{
-  text: string;
-  delay: number;
-  speed?: number;
-  color?: string;
-  fontSize?: number;
-  glow?: boolean;
-  center?: boolean;
-}> = ({
-  text,
-  delay,
-  speed = 2,
-  color = PHOSPHOR,
-  fontSize = 22,
-  glow = true,
-  center = false,
-}) => {
+// ─── Components ──────────────────────────────────────
+
+const TypeLine: React.FC<{ text: string; delay: number; speed?: number; color?: string; fontSize?: number; glow?: boolean; center?: boolean }> = ({ text, delay, speed = 2, color = PHOSPHOR, fontSize = 22, glow = true, center = false }) => {
   const frame = useCurrentFrame();
   const lineOpacity = interpolate(frame, [delay, delay + 1], [0, 1], clamp);
-  const chars = Math.floor(
-    interpolate(frame, [delay, delay + text.length / speed], [0, text.length], clamp)
-  );
-  const showCursor =
-    frame >= delay && frame < delay + text.length / speed + 20;
+  const chars = Math.floor(interpolate(frame, [delay, delay + text.length / speed], [0, text.length], clamp));
+  const showCursor = frame >= delay && frame < delay + text.length / speed + 20;
   const cursorBlink = Math.floor(frame / 6) % 2 === 0;
-
   return (
-    <div
-      style={{
-        opacity: lineOpacity,
-        fontFamily: mono,
-        fontSize,
-        color,
-        textShadow: glow ? `0 0 8px ${color}, 0 0 2px ${color}` : "none",
-        lineHeight: 1.6,
-        textAlign: center ? "center" : "left",
-      }}
-    >
+    <div style={{ opacity: lineOpacity, fontFamily: mono, fontSize, color, textShadow: glow ? `0 0 8px ${color}, 0 0 2px ${color}` : "none", lineHeight: 1.6, textAlign: center ? "center" : "left" }}>
       {text.slice(0, chars)}
-      {showCursor && cursorBlink && (
-        <span
-          style={{
-            color: PHOSPHOR_BRIGHT,
-            textShadow: `0 0 10px ${PHOSPHOR}`,
-          }}
-        >
-          █
-        </span>
-      )}
+      {showCursor && cursorBlink && <span style={{ color: PHOSPHOR_BRIGHT, textShadow: `0 0 10px ${PHOSPHOR}` }}>█</span>}
     </div>
   );
 };
 
-// ─── Instant appear ──────────────────────────────────
-const Line: React.FC<{
-  text: string;
-  delay: number;
-  color?: string;
-  fontSize?: number;
-  glow?: boolean;
-  center?: boolean;
-}> = ({
-  text,
-  delay,
-  color = PHOSPHOR,
-  fontSize = 22,
-  glow = true,
-  center = false,
-}) => {
+const Line: React.FC<{ text: string; delay: number; color?: string; fontSize?: number; glow?: boolean; center?: boolean }> = ({ text, delay, color = PHOSPHOR, fontSize = 22, glow = true, center = false }) => {
   const frame = useCurrentFrame();
   const opacity = interpolate(frame, [delay, delay + 2], [0, 1], clamp);
-
-  return (
-    <div
-      style={{
-        opacity,
-        fontFamily: mono,
-        fontSize,
-        color,
-        textShadow: glow ? `0 0 8px ${color}, 0 0 2px ${color}` : "none",
-        lineHeight: 1.6,
-        textAlign: center ? "center" : "left",
-        whiteSpace: "pre",
-      }}
-    >
-      {text}
-    </div>
-  );
+  return <div style={{ opacity, fontFamily: mono, fontSize, color, textShadow: glow ? `0 0 8px ${color}, 0 0 2px ${color}` : "none", lineHeight: 1.6, textAlign: center ? "center" : "left", whiteSpace: "pre" }}>{text}</div>;
 };
 
-// ─── Big centered number ─────────────────────────────
-const BigNum: React.FC<{
-  from: number;
-  to: number;
-  delay: number;
-  duration: number;
-  prefix?: string;
-  suffix?: string;
-  color?: string;
-  fontSize?: number;
-  decimals?: number;
-}> = ({
-  from,
-  to,
-  delay,
-  duration,
-  prefix = "",
-  suffix = "",
-  color = PHOSPHOR_BRIGHT,
-  fontSize = 80,
-  decimals = 2,
-}) => {
+const BigNum: React.FC<{ from: number; to: number; delay: number; duration: number; prefix?: string; suffix?: string; color?: string; fontSize?: number; decimals?: number }> = ({ from, to, delay, duration, prefix = "", suffix = "", color = PHOSPHOR_BRIGHT, fontSize = 80, decimals = 2 }) => {
   const frame = useCurrentFrame();
   const opacity = interpolate(frame, [delay, delay + 4], [0, 1], clamp);
-  const value = interpolate(frame, [delay, delay + duration], [from, to], {
-    ...clamp,
-    easing: Easing.out(Easing.quad),
-  });
-
+  const value = interpolate(frame, [delay, delay + duration], [from, to], { ...clamp, easing: Easing.out(Easing.quad) });
   return (
-    <div
-      style={{
-        opacity,
-        fontFamily: mono,
-        fontSize,
-        fontWeight: "bold",
-        color,
-        textShadow: `0 0 30px ${color}, 0 0 60px ${color}`,
-        textAlign: "center",
-        letterSpacing: -2,
-      }}
-    >
-      {prefix}
-      {value.toLocaleString("en-US", {
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals,
-      })}
-      {suffix}
+    <div style={{ opacity, fontFamily: mono, fontSize, fontWeight: "bold", color, textShadow: `0 0 30px ${color}, 0 0 60px ${color}`, textAlign: "center", letterSpacing: -2 }}>
+      {prefix}{value.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}{suffix}
     </div>
   );
 };
 
-// ─── Spinner ─────────────────────────────────────────
-const Spinner: React.FC<{
-  delay: number;
-  duration: number;
-  label: string;
-  doneLabel?: string;
-  center?: boolean;
-}> = ({ delay, duration, label, doneLabel, center = false }) => {
+const Spinner: React.FC<{ delay: number; duration: number; label: string; doneLabel?: string; center?: boolean }> = ({ delay, duration, label, doneLabel, center = false }) => {
   const frame = useCurrentFrame();
   const opacity = interpolate(frame, [delay, delay + 1], [0, 1], clamp);
   const spinChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
   const done = frame >= delay + duration;
   const charIdx = Math.floor((frame - delay) * 0.5) % spinChars.length;
-
   return (
-    <div
-      style={{
-        opacity,
-        fontFamily: mono,
-        fontSize: 18,
-        lineHeight: 1.6,
-        display: "flex",
-        gap: 8,
-        justifyContent: center ? "center" : "flex-start",
-      }}
-    >
-      {!done && (
-        <span style={{ color: PHOSPHOR, textShadow: `0 0 8px ${PHOSPHOR}` }}>
-          {spinChars[charIdx]}
-        </span>
-      )}
-      {done && (
-        <span
-          style={{
-            color: PHOSPHOR_BRIGHT,
-            textShadow: `0 0 8px ${PHOSPHOR_BRIGHT}`,
-          }}
-        >
-          ✓
-        </span>
-      )}
-      <span style={{ color: done ? PHOSPHOR : PHOSPHOR_DIM }}>
-        {done && doneLabel ? doneLabel : label}
-      </span>
+    <div style={{ opacity, fontFamily: mono, fontSize: 18, lineHeight: 1.6, display: "flex", gap: 8, justifyContent: center ? "center" : "flex-start" }}>
+      {!done && <span style={{ color: PHOSPHOR, textShadow: `0 0 8px ${PHOSPHOR}` }}>{spinChars[charIdx]}</span>}
+      {done && <span style={{ color: PHOSPHOR_BRIGHT, textShadow: `0 0 8px ${PHOSPHOR_BRIGHT}` }}>✓</span>}
+      <span style={{ color: done ? PHOSPHOR : PHOSPHOR_DIM }}>{done && doneLabel ? doneLabel : label}</span>
     </div>
   );
 };
 
-// ─── Progress bar ────────────────────────────────────
-const ProgressBar: React.FC<{
-  delay: number;
-  duration: number;
-  label: string;
-  width?: number;
-  center?: boolean;
-}> = ({ delay, duration, label, width = 500, center = false }) => {
+const ProgressBar: React.FC<{ delay: number; duration: number; label: string; center?: boolean }> = ({ delay, duration, label, center = false }) => {
   const frame = useCurrentFrame();
   const opacity = interpolate(frame, [delay, delay + 2], [0, 1], clamp);
   const progress = interpolate(frame, [delay, delay + duration], [0, 100], clamp);
-  const totalBlocks = 30;
-  const filledBlocks = Math.floor((progress / 100) * totalBlocks);
-  const bar =
-    "█".repeat(filledBlocks) + "░".repeat(totalBlocks - filledBlocks);
-
+  const total = 30;
+  const filled = Math.floor((progress / 100) * total);
+  const bar = "█".repeat(filled) + "░".repeat(total - filled);
   return (
-    <div
-      style={{
-        opacity,
-        fontFamily: mono,
-        fontSize: 16,
-        lineHeight: 1.6,
-        textAlign: center ? "center" : "left",
-      }}
-    >
+    <div style={{ opacity, fontFamily: mono, fontSize: 16, lineHeight: 1.6, textAlign: center ? "center" : "left" }}>
       <span style={{ color: DIM }}>{label} </span>
-      <span style={{ color: PHOSPHOR, textShadow: `0 0 6px ${PHOSPHOR}` }}>
-        [{bar}]
-      </span>
+      <span style={{ color: PHOSPHOR, textShadow: `0 0 6px ${PHOSPHOR}` }}>[{bar}]</span>
       <span style={{ color: PHOSPHOR_DIM }}> {Math.floor(progress)}%</span>
     </div>
   );
 };
 
-// ─── Centered layout helper ──────────────────────────
-const Center: React.FC<{
-  children: React.ReactNode;
-  gap?: number;
-  style?: React.CSSProperties;
-}> = ({ children, gap = 0, style }) => (
-  <div
-    style={{
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      height: "100%",
-      gap,
-      padding: "60px 80px",
-      ...style,
-    }}
-  >
-    {children}
-  </div>
+const Center: React.FC<{ children: React.ReactNode; gap?: number; style?: React.CSSProperties }> = ({ children, gap = 0, style }) => (
+  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap, padding: "60px 80px", ...style }}>{children}</div>
 );
 
 // ═════════════════════════════════════════════════════
-// SCENES
+// SCENES — 8 total, ~38s
 // ═════════════════════════════════════════════════════
 
-// ─── 1. BOOT ─────────────────────────────────────────
-// Quick and cinematic. Sets the mood.
+// ─── 1. BOOT (2s = 60f) ─────────────────────────────
 const SceneBoot: React.FC = () => {
   const frame = useCurrentFrame();
   const flash = interpolate(frame, [0, 5], [0.8, 0], clamp);
-
   return (
     <CRT>
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          backgroundColor: PHOSPHOR,
-          opacity: flash,
-          zIndex: 50,
-        }}
-      />
-      <MatrixRain delay={0} duration={40} density={20} />
-
+      <div style={{ position: "absolute", inset: 0, backgroundColor: PHOSPHOR, opacity: flash, zIndex: 50 }} />
+      <MatrixRain delay={0} duration={50} density={20} />
       <Center gap={12}>
-        <Line text="╔═════════════════════════════════════╗" delay={4} color={DIM} fontSize={16} center />
-        <Line text="║                                     ║" delay={4} color={DIM} fontSize={16} center />
-        <Line text="║  G O L D B O T   S A C H S  v1.0   ║" delay={6} color={AMBER} fontSize={16} center />
-        <Line text="║  Yield infrastructure for AI agents  ║" delay={8} color={AMBER_DIM} fontSize={16} center />
-        <Line text="║                                     ║" delay={4} color={DIM} fontSize={16} center />
-        <Line text="╚═════════════════════════════════════╝" delay={10} color={DIM} fontSize={16} center />
-
-        <div style={{ height: 24 }} />
-
-        <Spinner delay={16} duration={15} label="Connecting to Base..." doneLabel="Connected to Base (8453)" center />
-        <Spinner delay={20} duration={14} label="Loading vault..." doneLabel="clawUSDC vault loaded" center />
-        <Spinner delay={24} duration={16} label="Syncing strategy..." doneLabel="Beefy → Morpho → Steakhouse Financial" center />
-
-        <div style={{ height: 16 }} />
-        <ProgressBar delay={30} duration={20} label="INIT" center />
-
+        <Line text="╔════════════════════════════════════════╗" delay={4} color={DIM} fontSize={15} center />
+        <Line text="║                                        ║" delay={4} color={DIM} fontSize={15} center />
+        <Line text="║   G O L D B O T   S A C H S   v1.0    ║" delay={6} color={AMBER} fontSize={15} center />
+        <Line text="║   Yield infrastructure for AI agents   ║" delay={8} color={AMBER_DIM} fontSize={15} center />
+        <Line text="║                                        ║" delay={4} color={DIM} fontSize={15} center />
+        <Line text="╚════════════════════════════════════════╝" delay={10} color={DIM} fontSize={15} center />
         <div style={{ height: 20 }} />
-        <Line text="[READY] All systems operational." delay={54} color={PHOSPHOR_BRIGHT} fontSize={18} center />
+        <Spinner delay={14} duration={12} label="Connecting to Base..." doneLabel="Base (8453)" center />
+        <Spinner delay={17} duration={12} label="Loading vault..." doneLabel="clawUSDC ready" center />
+        <Spinner delay={20} duration={14} label="Strategy sync..." doneLabel="Beefy → Morpho → Steakhouse Financial" center />
+        <div style={{ height: 12 }} />
+        <ProgressBar delay={26} duration={18} label="INIT" center />
+        <div style={{ height: 12 }} />
+        <Line text="[READY] All systems operational." delay={48} color={PHOSPHOR_BRIGHT} fontSize={18} center />
       </Center>
     </CRT>
   );
 };
 
-// ─── 2. THE PROBLEM ──────────────────────────────────
-// Slow. Dramatic. One idea: your USDC is doing nothing.
+// ─── 2. THE PROBLEM (3.5s = 105f) ───────────────────
+// Big balance counter → earning $0 → one line of copy
 const SceneProblem: React.FC = () => {
   const frame = useCurrentFrame();
-
-  const balance = interpolate(frame, [10, 35], [0, 47832.61], {
-    ...clamp,
-    easing: Easing.out(Easing.cubic),
-  });
-
   return (
     <CRT>
       <Center gap={16}>
-        <Line text="AGENT WALLET SCAN" delay={0} color={DIM} fontSize={14} center />
-
-        <div style={{ height: 30 }} />
-
-        <BigNum from={0} to={47832.61} delay={8} duration={30} prefix="$" color={WHITE} fontSize={76} />
-        <Line text="USDC" delay={12} color={DIM} fontSize={20} center />
-
+        <Line text="AGENT WALLET" delay={0} color={DIM} fontSize={14} center />
+        <div style={{ height: 20 }} />
+        <BigNum from={0} to={47832.61} delay={6} duration={25} prefix="$" color={WHITE} fontSize={76} />
+        <Line text="USDC" delay={10} color={DIM} fontSize={20} center />
         <div style={{ height: 50 }} />
-
-        <Line text="CURRENTLY EARNING" delay={42} color={DIM} fontSize={14} center />
-
-        <div style={{ height: 8 }} />
-
-        <Line text="$0.00" delay={46} color={RED} fontSize={64} center />
-
+        <Line text="EARNING" delay={36} color={DIM} fontSize={14} center />
+        <div style={{ height: 4 }} />
+        <Line text="$0.00" delay={40} color={RED} fontSize={64} center />
         <div style={{ height: 40 }} />
-
-        <TypeLine
-          text="Almost fifty thousand dollars. Doing nothing."
-          delay={58}
-          speed={1.8}
-          color={AMBER}
-          fontSize={22}
-          center
-        />
+        <Line text="Idle money is dead money." delay={56} color={AMBER} fontSize={26} center />
       </Center>
     </CRT>
   );
 };
 
-// ─── 3. THE FIX ──────────────────────────────────────
-// Show the install. Terminal aesthetic but centered, breathing room.
-const SceneFix: React.FC = () => {
+// ─── 3. INSTALL + EARNING (5.5s = 165f) ─────────────
+// Terminal install → deposit → yield kicks in (merged two old scenes)
+const SceneInstall: React.FC = () => {
   const frame = useCurrentFrame();
-
   return (
     <CRT>
-      <Center gap={8} style={{ alignItems: "flex-start", padding: "80px 100px" }}>
-        <Line text="AGENT TERMINAL" delay={0} color={AMBER} fontSize={14} center={false} />
-        <Line text="────────────────────────────────────────" delay={2} color={DIM} fontSize={14} />
-
-        <div style={{ height: 16 }} />
-
-        <TypeLine text="$ curl -sO goldbotsachs.com/skills/goldbot-sachs.md" delay={6} speed={2} fontSize={19} />
-        <Spinner delay={28} duration={12} label="Downloading..." doneLabel="goldbot-sachs.md (2.1kb)" />
-
-        <div style={{ height: 20 }} />
-
-        <TypeLine text="$ agent deposit 47832.61 USDC --vault clawUSDC" delay={46} speed={1.8} fontSize={19} />
-        <Spinner delay={68} duration={14} label="Approving USDC..." doneLabel="Approved" />
-        <Spinner delay={74} duration={16} label="Depositing..." doneLabel="Confirmed" />
+      <Center gap={6} style={{ alignItems: "flex-start", padding: "70px 90px" }}>
+        <Line text="AGENT TERMINAL" delay={0} color={AMBER} fontSize={14} />
+        <Line text="────────────────────────────────────────────" delay={2} color={DIM} fontSize={14} />
 
         <div style={{ height: 12 }} />
+        <TypeLine text="$ curl -sO goldbotsachs.com/skills/goldbot-sachs.md" delay={6} speed={2.2} fontSize={18} />
+        <Spinner delay={26} duration={10} label="Downloading..." doneLabel="goldbot-sachs.md (2.1kb)" />
 
-        <Line text="✓ tx: 0x8f3a7c...4d1e  [block 28491023]" delay={94} color={PHOSPHOR_BRIGHT} fontSize={17} />
-        <Line text="✓ 47,832.61 USDC → clawUSDC" delay={98} color={PHOSPHOR_BRIGHT} fontSize={17} />
+        <div style={{ height: 14 }} />
+        <TypeLine text="$ agent deposit 47832.61 USDC --vault clawUSDC" delay={40} speed={2} fontSize={18} />
+        <Spinner delay={60} duration={12} label="Approving USDC..." doneLabel="Approved" />
+        <Spinner delay={66} duration={14} label="Depositing..." doneLabel="Confirmed" />
 
-        <div style={{ height: 24 }} />
-
-        <TypeLine
-          text="One skill file. One command. That's it."
-          delay={106}
-          speed={1.8}
-          color={AMBER}
-          fontSize={24}
-        />
-      </Center>
-    </CRT>
-  );
-};
-
-// ─── 4. NOW IT'S EARNING ─────────────────────────────
-// Show the yield kicking in. Big number. Per day, per month, per year.
-const SceneEarning: React.FC = () => {
-  const frame = useCurrentFrame();
-
-  return (
-    <CRT>
-      <Center gap={16}>
-        <Line text="YOUR AGENT IS NOW EARNING" delay={0} color={DIM} fontSize={14} center />
+        <div style={{ height: 10 }} />
+        <Line text="✓ tx: 0x8f3a7c...4d1e  [block 28491023]" delay={84} color={PHOSPHOR_BRIGHT} fontSize={16} />
+        <Line text="✓ 47,832.61 USDC → clawUSDC" delay={88} color={PHOSPHOR_BRIGHT} fontSize={16} />
 
         <div style={{ height: 20 }} />
+        <Line text="────────────────────────────────────────────" delay={94} color={DIM} fontSize={14} />
+        <div style={{ height: 8 }} />
 
-        <BigNum from={0} to={4.12} delay={6} duration={30} suffix="%" color={PHOSPHOR_BRIGHT} fontSize={100} decimals={2} />
-        <Line text="APY — autocompounding" delay={10} color={PHOSPHOR_DIM} fontSize={18} center />
+        {/* Yield kicks in right here — no scene change */}
+        <Line text="YIELD ACTIVE" delay={98} color={AMBER} fontSize={14} />
+        <div style={{ height: 6 }} />
 
-        <div style={{ height: 50 }} />
+        <div style={{ display: "flex", gap: 40, opacity: interpolate(frame, [100, 104], [0, 1], clamp) }}>
+          <div>
+            <div style={{ fontFamily: mono, fontSize: 13, color: DIM }}>PER DAY</div>
+            <div style={{ fontFamily: mono, fontSize: 28, color: WHITE, textShadow: `0 0 8px ${PHOSPHOR}` }}>$5.40</div>
+          </div>
+          <div>
+            <div style={{ fontFamily: mono, fontSize: 13, color: DIM }}>PER MONTH</div>
+            <div style={{ fontFamily: mono, fontSize: 28, color: WHITE, textShadow: `0 0 8px ${PHOSPHOR}` }}>$164</div>
+          </div>
+          <div>
+            <div style={{ fontFamily: mono, fontSize: 13, color: DIM }}>PER YEAR</div>
+            <div style={{ fontFamily: mono, fontSize: 28, color: AMBER, textShadow: `0 0 12px ${AMBER}` }}>$1,970</div>
+          </div>
+        </div>
 
-        <Line text="$5.40 / day" delay={40} color={WHITE} fontSize={28} center />
-        <Line text="$164 / month" delay={48} color={WHITE} fontSize={28} center />
-        <Line text="$1,970 / year" delay={56} color={AMBER} fontSize={32} center />
+        <div style={{ height: 14 }} />
+        <BigNum from={0} to={4.12} delay={108} duration={25} suffix="% APY" color={PHOSPHOR_BRIGHT} fontSize={48} decimals={2} />
 
-        <div style={{ height: 40 }} />
-
-        <TypeLine
-          text="While your agent does literally nothing."
-          delay={68}
-          speed={1.8}
-          color={PHOSPHOR_DIM}
-          fontSize={20}
-          center
-        />
+        <div style={{ height: 14 }} />
+        <Line text="One skill file. Autocompounding. No lockup." delay={136} color={PHOSPHOR_DIM} fontSize={16} />
       </Center>
     </CRT>
   );
 };
 
-// ─── 5. HOW IT WORKS — VAULT FLOW ────────────────────
-// SVG diagram. Clean boxes. Full protocol names.
+// ─── 4. VAULT FLOW (4.5s = 135f) ────────────────────
+// SVG diagram — slow, breathing, centered
 const SceneFlow: React.FC = () => {
   const frame = useCurrentFrame();
-
-  const cx = 440;
-  const boxW = 380;
+  const cx = 540; // truly centered on 1080
+  const boxW = 400;
   const boxH = 72;
   const nodes = [
-    { label: "Your Agent", sub: "holds USDC", y: 80, color: WHITE, delay: 6 },
-    { label: "clawUSDC", sub: "ERC-4626 vault on Base", y: 230, color: AMBER, delay: 16 },
-    { label: "Beefy Finance", sub: "yield optimizer — auto-compounds", y: 380, color: "#59A662", delay: 26 },
-    { label: "Morpho Blue", sub: "isolated lending market", y: 530, color: "#818cf8", delay: 36 },
-    { label: "Steakhouse Financial", sub: "risk curator — manages vault params", y: 680, color: "#f97316", delay: 46 },
+    { label: "Your Agent", sub: "holds USDC", y: 90, color: WHITE, delay: 6 },
+    { label: "clawUSDC", sub: "ERC-4626 vault on Base", y: 240, color: AMBER, delay: 18 },
+    { label: "Beefy Finance", sub: "yield optimizer — auto-compounds", y: 390, color: "#59A662", delay: 30 },
+    { label: "Morpho Blue", sub: "isolated lending market", y: 540, color: "#818cf8", delay: 42 },
+    { label: "Steakhouse Financial", sub: "risk curator — manages vault params", y: 690, color: "#f97316", delay: 54 },
   ];
 
   return (
@@ -609,745 +271,273 @@ const SceneFlow: React.FC = () => {
       <div style={{ padding: "24px 40px", position: "relative", zIndex: 10 }}>
         <Line text="WHERE YOUR USDC GOES" delay={0} color={AMBER} fontSize={15} center />
       </div>
-
-      <svg
-        style={{
-          position: "absolute",
-          top: 50,
-          left: 0,
-          width: 1080,
-          height: 900,
-          zIndex: 10,
-        }}
-        viewBox="0 0 1080 900"
-      >
-        {/* Connecting arrows */}
+      <svg style={{ position: "absolute", top: 50, left: 0, width: 1080, height: 900, zIndex: 10 }} viewBox="0 0 1080 900">
+        {/* Arrows */}
         {nodes.slice(0, -1).map((node, i) => {
-          const progress = interpolate(
-            frame,
-            [node.delay + 8, node.delay + 16],
-            [0, 1],
-            clamp
-          );
+          const progress = interpolate(frame, [node.delay + 10, node.delay + 18], [0, 1], clamp);
           const y1 = node.y + boxH;
           const y2 = nodes[i + 1].y;
           const lineEnd = y1 + (y2 - y1) * progress;
-          const opacity = interpolate(
-            frame,
-            [node.delay + 8, node.delay + 10],
-            [0, 0.6],
-            clamp
-          );
-
+          const opacity = interpolate(frame, [node.delay + 10, node.delay + 12], [0, 0.6], clamp);
           return (
             <g key={`line-${i}`}>
-              <line
-                x1={cx}
-                y1={y1}
-                x2={cx}
-                y2={lineEnd}
-                stroke={PHOSPHOR_DIM}
-                strokeWidth={2}
-                opacity={opacity}
-              />
-              {progress > 0.9 && (
-                <polygon
-                  points={`${cx},${y2} ${cx - 7},${y2 - 12} ${cx + 7},${y2 - 12}`}
-                  fill={PHOSPHOR_DIM}
-                  opacity={0.6}
-                />
-              )}
+              <line x1={cx} y1={y1} x2={cx} y2={lineEnd} stroke={PHOSPHOR_DIM} strokeWidth={2} opacity={opacity} />
+              {progress > 0.9 && <polygon points={`${cx},${y2} ${cx - 7},${y2 - 12} ${cx + 7},${y2 - 12}`} fill={PHOSPHOR_DIM} opacity={0.6} />}
             </g>
           );
         })}
-
         {/* Boxes */}
         {nodes.map((node, i) => {
-          const scale = spring({
-            frame,
-            fps: 30,
-            delay: node.delay,
-            config: { damping: 200 },
-          });
-          const opacity = interpolate(
-            frame,
-            [node.delay, node.delay + 4],
-            [0, 1],
-            clamp
-          );
+          const scale = spring({ frame, fps: 30, delay: node.delay, config: { damping: 200 } });
+          const opacity = interpolate(frame, [node.delay, node.delay + 4], [0, 1], clamp);
           return (
-            <g
-              key={`node-${i}`}
-              opacity={opacity}
-              transform={`translate(${cx}, ${node.y + boxH / 2}) scale(${scale}) translate(${-cx}, ${-(node.y + boxH / 2)})`}
-            >
-              <rect
-                x={cx - boxW / 2}
-                y={node.y}
-                width={boxW}
-                height={boxH}
-                rx={8}
-                fill="none"
-                stroke={node.color}
-                strokeWidth={1.5}
-                opacity={0.8}
-              />
-              <rect
-                x={cx - boxW / 2}
-                y={node.y}
-                width={boxW}
-                height={boxH}
-                rx={8}
-                fill={node.color}
-                opacity={0.05}
-              />
-              <text
-                x={cx}
-                y={node.y + 30}
-                textAnchor="middle"
-                fontFamily={mono}
-                fontSize={20}
-                fontWeight="bold"
-                fill={node.color}
-              >
-                {node.label}
-              </text>
-              <text
-                x={cx}
-                y={node.y + 52}
-                textAnchor="middle"
-                fontFamily={mono}
-                fontSize={13}
-                fill={DIM}
-              >
-                {node.sub}
-              </text>
+            <g key={`n-${i}`} opacity={opacity} transform={`translate(${cx}, ${node.y + boxH / 2}) scale(${scale}) translate(${-cx}, ${-(node.y + boxH / 2)})`}>
+              <rect x={cx - boxW / 2} y={node.y} width={boxW} height={boxH} rx={8} fill="none" stroke={node.color} strokeWidth={1.5} opacity={0.8} />
+              <rect x={cx - boxW / 2} y={node.y} width={boxW} height={boxH} rx={8} fill={node.color} opacity={0.05} />
+              <text x={cx} y={node.y + 30} textAnchor="middle" fontFamily={mono} fontSize={20} fontWeight="bold" fill={node.color}>{node.label}</text>
+              <text x={cx} y={node.y + 52} textAnchor="middle" fontFamily={mono} fontSize={13} fill={DIM}>{node.sub}</text>
             </g>
           );
         })}
-
-        {/* Return arrow — autocompound */}
+        {/* Return arrow */}
         {(() => {
-          const d = 56;
-          const progress = interpolate(frame, [d, d + 30], [0, 1], {
-            ...clamp,
-            easing: Easing.inOut(Easing.quad),
-          });
+          const d = 68;
+          const progress = interpolate(frame, [d, d + 30], [0, 1], { ...clamp, easing: Easing.inOut(Easing.quad) });
           const opacity = interpolate(frame, [d, d + 5], [0, 0.7], clamp);
           const rightX = cx + boxW / 2 + 50;
-          const topY = 120;
-          const bottomY = 720;
-          const curY = bottomY - (bottomY - topY) * progress;
-
           return (
             <g opacity={opacity}>
-              <line
-                x1={rightX}
-                y1={bottomY}
-                x2={rightX}
-                y2={curY}
-                stroke={PHOSPHOR_BRIGHT}
-                strokeWidth={2}
-                strokeDasharray="6 4"
-              />
-              {progress > 0.9 && (
-                <polygon
-                  points={`${rightX},${topY} ${rightX - 6},${topY + 10} ${rightX + 6},${topY + 10}`}
-                  fill={PHOSPHOR_BRIGHT}
-                />
-              )}
-              <text
-                x={rightX + 16}
-                y={420}
-                fontFamily={mono}
-                fontSize={13}
-                fill={PHOSPHOR_BRIGHT}
-                transform={`rotate(-90, ${rightX + 16}, 420)`}
-              >
-                yield autocompounds back
-              </text>
+              <line x1={rightX} y1={730} x2={rightX} y2={730 - 590 * progress} stroke={PHOSPHOR_BRIGHT} strokeWidth={2} strokeDasharray="6 4" />
+              {progress > 0.9 && <polygon points={`${rightX},${130} ${rightX - 6},${140} ${rightX + 6},${140}`} fill={PHOSPHOR_BRIGHT} />}
+              <text x={rightX + 16} y={430} fontFamily={mono} fontSize={13} fill={PHOSPHOR_BRIGHT} transform={`rotate(-90, ${rightX + 16}, 430)`}>yield autocompounds back</text>
             </g>
           );
         })()}
       </svg>
-
       <div style={{ position: "absolute", bottom: 40, left: 0, right: 0, zIndex: 10 }}>
-        <TypeLine
-          text="Yield flows down. Profits compound back up. Automatically."
-          delay={64}
-          speed={1.8}
-          color={PHOSPHOR_DIM}
-          fontSize={17}
-          center
-        />
+        <Line text="Yield flows down. Profits compound back up. Automatically." delay={80} color={PHOSPHOR_DIM} fontSize={16} center />
       </div>
     </CRT>
   );
 };
 
-// ─── 6. REFERRALS — THE STORY ────────────────────────
-// Tell it step by step. Not a diagram dump. A narrative.
-const SceneReferrals1: React.FC = () => {
+// ─── 5. REFERRALS + NETWORK (6s = 180f) ─────────────
+// Combined: text intro WITH network building simultaneously
+const SceneReferrals: React.FC = () => {
   const frame = useCurrentFrame();
-
-  return (
-    <CRT>
-      <Center gap={24}>
-        <Line text="NOW FOR THE FUN PART" delay={0} color={AMBER} fontSize={14} center />
-
-        <div style={{ height: 20 }} />
-
-        <TypeLine
-          text="You share a link."
-          delay={10}
-          speed={1.5}
-          color={WHITE}
-          fontSize={32}
-          center
-        />
-
-        <div style={{ height: 12 }} />
-
-        <Line
-          text="goldbotsachs.com/r/YOUR_ADDRESS"
-          delay={30}
-          color={CYAN}
-          fontSize={22}
-          center
-        />
-
-        <div style={{ height: 40 }} />
-
-        <TypeLine
-          text="Another agent deposits through it."
-          delay={42}
-          speed={1.5}
-          color={WHITE}
-          fontSize={32}
-          center
-        />
-
-        <div style={{ height: 30 }} />
-
-        <TypeLine
-          text="You earn 5% of everything they earn."
-          delay={64}
-          speed={1.5}
-          color={AMBER}
-          fontSize={32}
-          center
-        />
-
-        <div style={{ height: 8 }} />
-
-        <Line text="Set on-chain. Permanent. No signup." delay={86} color={PHOSPHOR_DIM} fontSize={18} center />
-      </Center>
-    </CRT>
-  );
-};
-
-// ─── 7. REFERRALS — CASCADING EXPLAINED ──────────────
-// Explain cascading without jargon. Then show the network.
-const SceneReferrals2: React.FC = () => {
-  const frame = useCurrentFrame();
-
-  return (
-    <CRT>
-      <Center gap={20}>
-        <TypeLine
-          text="But here's the thing."
-          delay={0}
-          speed={1.5}
-          color={AMBER}
-          fontSize={28}
-          center
-        />
-
-        <div style={{ height: 20 }} />
-
-        <TypeLine
-          text="They can share their link too."
-          delay={20}
-          speed={1.5}
-          color={WHITE}
-          fontSize={28}
-          center
-        />
-
-        <div style={{ height: 10 }} />
-
-        <TypeLine
-          text="When their referrals earn yield..."
-          delay={42}
-          speed={1.5}
-          color={WHITE}
-          fontSize={28}
-          center
-        />
-
-        <div style={{ height: 10 }} />
-
-        <TypeLine
-          text="they get 5%."
-          delay={62}
-          speed={1.5}
-          color={PHOSPHOR}
-          fontSize={28}
-          center
-        />
-
-        <div style={{ height: 10 }} />
-
-        <TypeLine
-          text="And that counts as their earnings."
-          delay={76}
-          speed={1.5}
-          color={WHITE}
-          fontSize={28}
-          center
-        />
-
-        <div style={{ height: 10 }} />
-
-        <TypeLine
-          text="So you get 5% of that too."
-          delay={96}
-          speed={1.5}
-          color={AMBER}
-          fontSize={28}
-          center
-        />
-
-        <div style={{ height: 30 }} />
-
-        <TypeLine
-          text="Every layer. Forever."
-          delay={116}
-          speed={1.2}
-          color={PHOSPHOR_BRIGHT}
-          fontSize={36}
-          center
-        />
-      </Center>
-    </CRT>
-  );
-};
-
-// ─── 8. REFERRALS — THE NETWORK ──────────────────────
-// SVG expanding network. Clean circles. Slow reveal.
-const SceneNetwork: React.FC = () => {
-  const frame = useCurrentFrame();
-
-  const cx = 540;
-  const you = { x: cx, y: 260 };
+  const cx = 740; // network lives on the right side
+  const you = { x: cx, y: 300 };
   const ring1 = [
-    { x: cx - 220, y: 430, delay: 12 },
-    { x: cx, y: 450, delay: 16 },
-    { x: cx + 220, y: 430, delay: 20 },
+    { x: cx - 160, y: 460, delay: 30 },
+    { x: cx + 20, y: 480, delay: 34 },
+    { x: cx + 180, y: 450, delay: 38 },
   ];
   const ring2 = [
-    { x: cx - 340, y: 600, delay: 30 },
-    { x: cx - 160, y: 610, delay: 33 },
-    { x: cx - 40, y: 620, delay: 36 },
-    { x: cx + 80, y: 620, delay: 39 },
-    { x: cx + 200, y: 610, delay: 42 },
-    { x: cx + 360, y: 600, delay: 45 },
+    { x: cx - 260, y: 600, delay: 70 },
+    { x: cx - 100, y: 620, delay: 73 },
+    { x: cx + 40, y: 630, delay: 76 },
+    { x: cx + 140, y: 620, delay: 79 },
+    { x: cx + 280, y: 600, delay: 82 },
   ];
   const ring3: { x: number; y: number; delay: number }[] = [];
-  for (let i = 0; i < 14; i++) {
-    ring3.push({
-      x: cx - 420 + (i / 13) * 840,
-      y: 760 + Math.sin(i * 0.9) * 15,
-      delay: 54 + i * 1.5,
-    });
+  for (let i = 0; i < 10; i++) {
+    ring3.push({ x: cx - 320 + (i / 9) * 640, y: 740 + Math.sin(i * 1.1) * 12, delay: 100 + i * 2 });
   }
 
-  const makeEdge = (
-    x1: number,
-    y1: number,
-    x2: number,
-    y2: number,
-    delay: number,
-    label?: string,
-    color = PHOSPHOR_DIM
-  ) => {
-    const progress = interpolate(frame, [delay, delay + 12], [0, 1], {
-      ...clamp,
-      easing: Easing.out(Easing.quad),
-    });
+  const makeEdge = (x1: number, y1: number, x2: number, y2: number, delay: number, label?: string, col = PHOSPHOR_DIM) => {
+    const progress = interpolate(frame, [delay, delay + 12], [0, 1], { ...clamp, easing: Easing.out(Easing.quad) });
     const opacity = interpolate(frame, [delay, delay + 3], [0, 0.5], clamp);
-    const endX = x1 + (x2 - x1) * progress;
-    const endY = y1 + (y2 - y1) * progress;
-    const midX = (x1 + x2) / 2;
-    const midY = (y1 + y2) / 2;
-    const labelOpacity = interpolate(frame, [delay + 10, delay + 15], [0, 1], clamp);
-
-    return (
-      <g>
-        <line
-          x1={x1}
-          y1={y1}
-          x2={endX}
-          y2={endY}
-          stroke={color}
-          strokeWidth={1.5}
-          opacity={opacity}
-        />
-        {label && (
-          <text
-            x={midX + 10}
-            y={midY - 6}
-            fontFamily={mono}
-            fontSize={12}
-            fill={PHOSPHOR_BRIGHT}
-            opacity={labelOpacity}
-          >
-            {label}
-          </text>
-        )}
-      </g>
-    );
+    return <line x1={x1} y1={y1} x2={x1 + (x2 - x1) * progress} y2={y1 + (y2 - y1) * progress} stroke={col} strokeWidth={1.5} opacity={opacity} />;
   };
 
-  const makeNode = (
-    x: number,
-    y: number,
-    r: number,
-    label: string,
-    color: string,
-    delay: number,
-    glow = false
-  ) => {
-    const scale = spring({
-      frame,
-      fps: 30,
-      delay,
-      config: { damping: 15, stiffness: 200 },
-    });
+  const makeNode = (x: number, y: number, r: number, label: string, color: string, delay: number, glow = false) => {
+    const scale = spring({ frame, fps: 30, delay, config: { damping: 15, stiffness: 200 } });
     const opacity = interpolate(frame, [delay, delay + 3], [0, 1], clamp);
     return (
-      <g
-        opacity={opacity}
-        transform={`translate(${x},${y}) scale(${scale}) translate(${-x},${-y})`}
-      >
-        {glow && (
-          <circle cx={x} cy={y} r={r + 10} fill={color} opacity={0.12} />
-        )}
+      <g opacity={opacity} transform={`translate(${x},${y}) scale(${scale}) translate(${-x},${-y})`}>
+        {glow && <circle cx={x} cy={y} r={r + 10} fill={color} opacity={0.12} />}
         <circle cx={x} cy={y} r={r} fill="none" stroke={color} strokeWidth={2} />
         <circle cx={x} cy={y} r={r} fill={color} opacity={0.08} />
-        {label && (
-          <text
-            x={x}
-            y={y + 5}
-            textAnchor="middle"
-            fontFamily={mono}
-            fontSize={r > 30 ? 14 : r > 18 ? 11 : 9}
-            fill={color}
-            fontWeight="bold"
-          >
-            {label}
-          </text>
-        )}
+        {label && <text x={x} y={y + 5} textAnchor="middle" fontFamily={mono} fontSize={r > 30 ? 13 : r > 18 ? 10 : 8} fill={color} fontWeight="bold">{label}</text>}
       </g>
     );
   };
 
   return (
     <CRT>
-      <div style={{ padding: "24px 40px", position: "relative", zIndex: 10 }}>
-        <Line text="REFERRAL NETWORK" delay={0} color={AMBER} fontSize={15} center />
+      {/* Left side: text */}
+      <div style={{ position: "absolute", left: 60, top: 0, width: 420, height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 16, zIndex: 10 }}>
+        <Line text="REFERRALS" delay={0} color={AMBER} fontSize={15} />
+        <div style={{ height: 12 }} />
+
+        <TypeLine text="Agents share a link." delay={8} speed={1.5} color={WHITE} fontSize={26} />
+        <div style={{ height: 6 }} />
+        <Line text={`goldbotsachs.com/r/${DEFAULT_REFERRER.slice(0, 8)}...`} delay={22} color={CYAN} fontSize={15} />
+
+        <div style={{ height: 20 }} />
+        <TypeLine text="Other agents deposit through it." delay={30} speed={1.5} color={WHITE} fontSize={26} />
+
+        <div style={{ height: 20 }} />
+        <TypeLine text="5% of their yield goes to the referrer." delay={50} speed={1.5} color={AMBER} fontSize={24} />
+
+        <div style={{ height: 24 }} />
+        <TypeLine text="They share it with their network." delay={72} speed={1.5} color={WHITE} fontSize={24} />
+        <TypeLine text="Those agents deposit." delay={92} speed={1.5} color={WHITE} fontSize={24} />
+        <TypeLine text="Everyone above earns." delay={108} speed={1.5} color={PHOSPHOR_BRIGHT} fontSize={24} />
+
+        <div style={{ height: 20 }} />
+        <Line text="On-chain. Permanent. No signup." delay={130} color={PHOSPHOR_DIM} fontSize={16} />
+        <Line text="Every layer earns. It grows itself." delay={140} color={PHOSPHOR_DIM} fontSize={16} />
       </div>
 
-      <svg
-        style={{
-          position: "absolute",
-          top: 50,
-          left: 0,
-          width: 1080,
-          height: 800,
-          zIndex: 10,
-        }}
-        viewBox="0 0 1080 850"
-      >
+      {/* Right side: SVG network growing in sync with text */}
+      <svg style={{ position: "absolute", top: 0, left: 400, width: 680, height: 1080, zIndex: 10 }} viewBox="300 100 680 800">
         {/* Edges */}
-        {ring1.map((n, i) =>
-          makeEdge(you.x, you.y + 36, n.x, n.y - 28, n.delay - 4, "5%")
-        )}
-        {ring2.slice(0, 2).map((n, i) =>
-          makeEdge(ring1[0].x, ring1[0].y + 28, n.x, n.y - 20, n.delay - 3, i === 0 ? "5%" : undefined)
-        )}
-        {ring2.slice(2, 4).map((n, i) =>
-          makeEdge(ring1[1].x, ring1[1].y + 28, n.x, n.y - 20, n.delay - 3)
-        )}
-        {ring2.slice(4, 6).map((n, i) =>
-          makeEdge(ring1[2].x, ring1[2].y + 28, n.x, n.y - 20, n.delay - 3)
-        )}
+        {ring1.map((n) => makeEdge(you.x, you.y + 36, n.x, n.y - 28, n.delay - 4))}
+        {ring2.slice(0, 2).map((n, i) => makeEdge(ring1[0].x, ring1[0].y + 28, n.x, n.y - 20, n.delay - 3))}
+        {ring2.slice(2, 3).map((n) => makeEdge(ring1[1].x, ring1[1].y + 28, n.x, n.y - 20, n.delay - 3))}
+        {ring2.slice(3, 5).map((n) => makeEdge(ring1[2].x, ring1[2].y + 28, n.x, n.y - 20, n.delay - 3))}
         {ring2.map((n, i) => {
           const t1 = ring3[i * 2];
           const t2 = ring3[i * 2 + 1];
-          return (
-            <g key={`r2e-${i}`}>
-              {t1 && makeEdge(n.x, n.y + 20, t1.x, t1.y - 14, t1.delay - 2, undefined, DIM)}
-              {t2 && makeEdge(n.x, n.y + 20, t2.x, t2.y - 14, t2.delay - 2, undefined, DIM)}
-            </g>
-          );
+          return <g key={`r2e-${i}`}>{t1 && makeEdge(n.x, n.y + 20, t1.x, t1.y - 12, t1.delay - 2, undefined, DIM)}{t2 && makeEdge(n.x, n.y + 20, t2.x, t2.y - 12, t2.delay - 2, undefined, DIM)}</g>;
         })}
-
         {/* Nodes */}
-        {makeNode(you.x, you.y, 40, "YOU", AMBER, 5, true)}
-        {ring1.map((n, i) =>
-          makeNode(n.x, n.y, 28, `Agent ${String.fromCharCode(65 + i)}`, PHOSPHOR, n.delay)
-        )}
-        {ring2.map((n, i) =>
-          makeNode(n.x, n.y, 20, String.fromCharCode(68 + i), PHOSPHOR_DIM, n.delay)
-        )}
-        {ring3.map((n, i) =>
-          makeNode(n.x, n.y, 12, "", DIM, n.delay)
-        )}
+        {makeNode(you.x, you.y, 40, "YOU", AMBER, 10, true)}
+        {ring1.map((n, i) => makeNode(n.x, n.y, 26, `Agent ${String.fromCharCode(65 + i)}`, PHOSPHOR, n.delay))}
+        {ring2.map((n, i) => makeNode(n.x, n.y, 18, String.fromCharCode(68 + i), PHOSPHOR_DIM, n.delay))}
+        {ring3.map((n, i) => makeNode(n.x, n.y, 10, "", DIM, n.delay))}
       </svg>
-
-      <div style={{ position: "absolute", bottom: 40, left: 0, right: 0, zIndex: 10 }}>
-        <TypeLine
-          text="Every node earns. Every connection pays. It grows itself."
-          delay={70}
-          speed={1.8}
-          color={PHOSPHOR_DIM}
-          fontSize={17}
-          center
-        />
-      </div>
     </CRT>
   );
 };
 
-// ─── 9. GASLESS ──────────────────────────────────────
-// Simple. Centered. Three steps.
+// ─── 6. GASLESS (3.5s = 105f) ────────────────────────
 const SceneGasless: React.FC = () => {
   const frame = useCurrentFrame();
-
   return (
     <CRT>
       <Center gap={20}>
-        <Line text="ZERO ETH?" delay={0} color={WHITE} fontSize={40} center />
-        <Line text="NO PROBLEM." delay={8} color={PHOSPHOR_BRIGHT} fontSize={40} center />
-
-        <div style={{ height: 40 }} />
-
-        <TypeLine text="Agent signs an off-chain permit." delay={20} speed={1.8} color={WHITE} fontSize={24} center />
-        <Line text="No gas needed." delay={40} color={DIM} fontSize={16} center />
-
-        <div style={{ height: 16 }} />
-
-        <TypeLine text="CoW Protocol solver executes the swap." delay={48} speed={1.8} color={WHITE} fontSize={24} center />
-        <Line text="Solver pays all gas." delay={68} color={DIM} fontSize={16} center />
-
-        <div style={{ height: 16 }} />
-
-        <TypeLine text="USDC → ETH. Agent is operational." delay={76} speed={1.8} color={AMBER} fontSize={24} center />
-
-        <div style={{ height: 40 }} />
-
-        <Line text="Your agent went from stuck to earning" delay={100} color={PHOSPHOR_DIM} fontSize={18} center />
-        <Line text="without spending a single dollar on gas." delay={106} color={PHOSPHOR_DIM} fontSize={18} center />
+        <Line text="ZERO ETH?" delay={0} color={WHITE} fontSize={42} center />
+        <Line text="NO PROBLEM." delay={8} color={PHOSPHOR_BRIGHT} fontSize={42} center />
+        <div style={{ height: 30 }} />
+        <TypeLine text="Agent signs an off-chain permit." delay={18} speed={1.8} color={WHITE} fontSize={24} center />
+        <Line text="No gas needed." delay={36} color={DIM} fontSize={16} center />
+        <div style={{ height: 12 }} />
+        <TypeLine text="CoW Protocol solver handles execution." delay={42} speed={1.8} color={WHITE} fontSize={24} center />
+        <Line text="Solver pays all gas." delay={60} color={DIM} fontSize={16} center />
+        <div style={{ height: 12 }} />
+        <TypeLine text="USDC → ETH. Agent is operational." delay={66} speed={1.8} color={AMBER} fontSize={24} center />
+        <div style={{ height: 30 }} />
+        <Line text="From stuck to earning. Zero cost." delay={88} color={PHOSPHOR_DIM} fontSize={18} center />
       </Center>
     </CRT>
   );
 };
 
-// ─── 10. SPECS ───────────────────────────────────────
-// Quick technical overview for the builders.
+// ─── 7. SPECS (2.5s = 75f) ──────────────────────────
 const SceneSpecs: React.FC = () => {
   const frame = useCurrentFrame();
-
   return (
     <CRT>
-      <Center gap={6} style={{ alignItems: "flex-start", padding: "60px 100px" }}>
+      <Center gap={4} style={{ alignItems: "flex-start", padding: "60px 100px" }}>
         <Line text="TECHNICAL DETAILS" delay={0} color={AMBER} fontSize={15} />
-        <Line text="──────────────────────────────────────────" delay={2} color={DIM} fontSize={14} />
-
-        <div style={{ height: 16 }} />
-
-        <Line text="Contract" delay={5} color={DIM} fontSize={14} />
-        <Line text="  0xb34Fff5efAb92BE9EA32Fa56C6de9a1C04A62B4d" delay={7} color={CYAN} fontSize={17} />
-
+        <Line text="──────────────────────────────────────────────" delay={2} color={DIM} fontSize={14} />
+        <div style={{ height: 12 }} />
+        <Line text="Contract" delay={4} color={DIM} fontSize={13} />
+        <Line text="  0xb34Fff5efAb92BE9EA32Fa56C6de9a1C04A62B4d" delay={6} color={CYAN} fontSize={16} />
+        <div style={{ height: 6 }} />
+        <Line text="Standard     ERC-4626 (tokenized vault)" delay={10} color={WHITE} fontSize={16} />
+        <Line text="Chain        Base (8453)" delay={13} color={WHITE} fontSize={16} />
+        <Line text="Token        clawUSDC" delay={16} color={WHITE} fontSize={16} />
         <div style={{ height: 8 }} />
-        <Line text="Standard     ERC-4626 (tokenized vault)" delay={12} color={WHITE} fontSize={17} />
-        <Line text="Chain        Base (8453)" delay={16} color={WHITE} fontSize={17} />
-        <Line text="Token        clawUSDC" delay={20} color={WHITE} fontSize={17} />
-        <Line text="Asset        USDC" delay={24} color={WHITE} fontSize={17} />
-
-        <div style={{ height: 12 }} />
-        <Line text="Strategy" delay={30} color={DIM} fontSize={14} />
-        <Line text="  Beefy Finance → Morpho Blue → Steakhouse Financial" delay={32} color={PHOSPHOR} fontSize={16} />
-
-        <div style={{ height: 12 }} />
-        <Line text="Permissions" delay={38} color={DIM} fontSize={14} />
-        <Line text="  Owner: can migrate strategy" delay={40} color={WHITE} fontSize={16} />
-        <Line text="  Owner: cannot touch deposits" delay={43} color={WHITE} fontSize={16} />
-        <Line text="  Users: deposit + withdraw anytime" delay={46} color={WHITE} fontSize={16} />
-        <Line text="  Lockup: none" delay={49} color={PHOSPHOR_BRIGHT} fontSize={16} />
-        <Line text="  Penalties: none" delay={52} color={PHOSPHOR_BRIGHT} fontSize={16} />
-
-        <div style={{ height: 12 }} />
-        <Line text="Source verified on Basescan. Fully open source." delay={58} color={PHOSPHOR_DIM} fontSize={15} />
-        <Line text="Built by the QiDao Protocol team." delay={62} color={AMBER_DIM} fontSize={15} />
+        <Line text="Strategy     Beefy → Morpho → Steakhouse Financial" delay={20} color={PHOSPHOR} fontSize={15} />
+        <div style={{ height: 8 }} />
+        <Line text="Lockup       none" delay={26} color={PHOSPHOR_BRIGHT} fontSize={16} />
+        <Line text="Penalties    none" delay={29} color={PHOSPHOR_BRIGHT} fontSize={16} />
+        <Line text="Withdraw     anytime" delay={32} color={PHOSPHOR_BRIGHT} fontSize={16} />
+        <div style={{ height: 10 }} />
+        <Line text="Source verified on Basescan. Fully open source." delay={38} color={PHOSPHOR_DIM} fontSize={14} />
+        <Line text="Built by QiDao Protocol (mai.finance)" delay={42} color={AMBER_DIM} fontSize={14} />
       </Center>
     </CRT>
   );
 };
 
-// ─── 11. CTA ─────────────────────────────────────────
-// Big. Centered. Dramatic. Counter. Link.
+// ─── 8. CTA (4s = 120f) ─────────────────────────────
 const SceneCTA: React.FC = () => {
   const frame = useCurrentFrame();
-
   return (
     <CRT>
-      <MatrixRain delay={50} duration={80} density={15} />
-
+      <MatrixRain delay={40} duration={80} density={15} />
       <Center gap={12}>
         <Line text="YOUR AGENT'S MONEY" delay={4} color={PHOSPHOR_BRIGHT} fontSize={44} center />
-
         <div style={{ height: 4 }} />
-
         <Line text="SHOULD BE MAKING MONEY" delay={12} color={AMBER} fontSize={44} center />
-
-        <div style={{ height: 40 }} />
-
-        <BigNum
-          from={0}
-          to={1970}
-          delay={24}
-          duration={50}
-          prefix="+$"
-          suffix="/yr"
-          color={PHOSPHOR_BRIGHT}
-          fontSize={64}
-          decimals={0}
-        />
-        <Line text="on $47,832 at 4.12% APY" delay={28} color={DIM} fontSize={15} center />
-
-        <div style={{ height: 50 }} />
-
-        <Line text="goldbotsachs.com" delay={42} color={AMBER} fontSize={36} center />
-
-        <div style={{ height: 10 }} />
-
-        <Line text="github.com/publu/goldbotsachs" delay={50} color={DIM} fontSize={16} center glow={false} />
-
         <div style={{ height: 30 }} />
-
-        <TypeLine
-          text="Install the skill. Tell your agent."
-          delay={58}
-          speed={1.5}
-          color={PHOSPHOR_DIM}
-          fontSize={20}
-          center
-        />
+        <BigNum from={0} to={1970} delay={22} duration={40} prefix="+$" suffix="/yr" color={PHOSPHOR_BRIGHT} fontSize={64} decimals={0} />
+        <Line text="on $47,832 at 4.12% APY" delay={26} color={DIM} fontSize={15} center />
+        <div style={{ height: 40 }} />
+        <Line text="goldbotsachs.com" delay={40} color={AMBER} fontSize={36} center />
+        <div style={{ height: 8 }} />
+        <Line text="github.com/publu/goldbotsachs" delay={48} color={DIM} fontSize={16} center glow={false} />
+        <div style={{ height: 24 }} />
+        <TypeLine text="Install the skill. Tell your agent." delay={56} speed={1.5} color={PHOSPHOR_DIM} fontSize={20} center />
       </Center>
     </CRT>
   );
 };
 
 // ═════════════════════════════════════════════════════
-// MAIN COMPOSITION
+// COMPOSITION
 // ═════════════════════════════════════════════════════
 
 export const ClawUSDCLaunch: React.FC = () => {
   return (
     <TransitionSeries>
-      {/* 1. Boot (2.5s) */}
-      <TransitionSeries.Sequence durationInFrames={75}>
+      {/* 1. Boot (2s) */}
+      <TransitionSeries.Sequence durationInFrames={60}>
         <SceneBoot />
       </TransitionSeries.Sequence>
-      <TransitionSeries.Transition
-        presentation={fade()}
-        timing={linearTiming({ durationInFrames: 8 })}
-      />
+      <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 8 })} />
 
-      {/* 2. The problem (4s) */}
-      <TransitionSeries.Sequence durationInFrames={120}>
+      {/* 2. Problem (3.5s) */}
+      <TransitionSeries.Sequence durationInFrames={105}>
         <SceneProblem />
       </TransitionSeries.Sequence>
-      <TransitionSeries.Transition
-        presentation={fade()}
-        timing={linearTiming({ durationInFrames: 8 })}
-      />
+      <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 8 })} />
 
-      {/* 3. The fix — install + deposit (5s) */}
-      <TransitionSeries.Sequence durationInFrames={150}>
-        <SceneFix />
+      {/* 3. Install + Earning (5.5s) */}
+      <TransitionSeries.Sequence durationInFrames={165}>
+        <SceneInstall />
       </TransitionSeries.Sequence>
-      <TransitionSeries.Transition
-        presentation={fade()}
-        timing={linearTiming({ durationInFrames: 8 })}
-      />
+      <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 8 })} />
 
-      {/* 4. Now it's earning (4s) */}
-      <TransitionSeries.Sequence durationInFrames={120}>
-        <SceneEarning />
-      </TransitionSeries.Sequence>
-      <TransitionSeries.Transition
-        presentation={fade()}
-        timing={linearTiming({ durationInFrames: 8 })}
-      />
-
-      {/* 5. How it works — vault flow (4s) */}
-      <TransitionSeries.Sequence durationInFrames={120}>
+      {/* 4. Vault flow (4.5s) */}
+      <TransitionSeries.Sequence durationInFrames={135}>
         <SceneFlow />
       </TransitionSeries.Sequence>
-      <TransitionSeries.Transition
-        presentation={fade()}
-        timing={linearTiming({ durationInFrames: 8 })}
-      />
+      <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 8 })} />
 
-      {/* 6. Referrals intro (4s) */}
-      <TransitionSeries.Sequence durationInFrames={120}>
-        <SceneReferrals1 />
+      {/* 5. Referrals + network (6s) */}
+      <TransitionSeries.Sequence durationInFrames={180}>
+        <SceneReferrals />
       </TransitionSeries.Sequence>
-      <TransitionSeries.Transition
-        presentation={fade()}
-        timing={linearTiming({ durationInFrames: 8 })}
-      />
+      <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 8 })} />
 
-      {/* 7. Cascading explained (5s) */}
-      <TransitionSeries.Sequence durationInFrames={150}>
-        <SceneReferrals2 />
-      </TransitionSeries.Sequence>
-      <TransitionSeries.Transition
-        presentation={fade()}
-        timing={linearTiming({ durationInFrames: 8 })}
-      />
-
-      {/* 8. Network graph (4s) */}
-      <TransitionSeries.Sequence durationInFrames={120}>
-        <SceneNetwork />
-      </TransitionSeries.Sequence>
-      <TransitionSeries.Transition
-        presentation={fade()}
-        timing={linearTiming({ durationInFrames: 8 })}
-      />
-
-      {/* 9. Gasless (4.5s) */}
-      <TransitionSeries.Sequence durationInFrames={135}>
+      {/* 6. Gasless (3.5s) */}
+      <TransitionSeries.Sequence durationInFrames={105}>
         <SceneGasless />
       </TransitionSeries.Sequence>
-      <TransitionSeries.Transition
-        presentation={fade()}
-        timing={linearTiming({ durationInFrames: 8 })}
-      />
+      <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 8 })} />
 
-      {/* 10. Specs (3s) */}
-      <TransitionSeries.Sequence durationInFrames={90}>
+      {/* 7. Specs (2.5s) */}
+      <TransitionSeries.Sequence durationInFrames={75}>
         <SceneSpecs />
       </TransitionSeries.Sequence>
-      <TransitionSeries.Transition
-        presentation={fade()}
-        timing={linearTiming({ durationInFrames: 8 })}
-      />
+      <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 8 })} />
 
-      {/* 11. CTA (4s) */}
+      {/* 8. CTA (4s) */}
       <TransitionSeries.Sequence durationInFrames={120}>
         <SceneCTA />
       </TransitionSeries.Sequence>
