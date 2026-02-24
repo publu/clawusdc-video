@@ -218,59 +218,97 @@ const SceneProblem: React.FC = () => {
   );
 };
 
-// ─── 3. THE FIX — INSTALL + EARNING (5.5s = 165f) ───
-// Earn while you work. Yield > burn rate = agent survives.
+// ─── 3. MOLTBOOK DISCOVERY + INSTALL (5.5s = 165f) ──
+// Agent scrolling feed, discovers clawUSDC, installs, starts earning
 const SceneInstall: React.FC = () => {
   const frame = useCurrentFrame();
+
+  // Feed posts scroll up slowly
+  const feedScroll = interpolate(frame, [0, 80], [0, -60], clamp);
+
+  // Highlight box around the goldbot post
+  const highlightOpacity = interpolate(frame, [32, 38, 44, 48], [0, 0.8, 0.8, 0], clamp);
+
   return (
     <CRT>
-      <Center gap={6} style={{ alignItems: "flex-start", padding: "70px 90px" }}>
-        <Line text="THE FIX" delay={0} color={AMBER} fontSize={15} />
-        <TypeLine text="What if your agent earned while it worked?" delay={4} speed={1.5} color={WHITE} fontSize={24} />
-        <Line text="────────────────────────────────────────────" delay={16} color={DIM} fontSize={14} />
+      <div style={{ position: "absolute", top: 40, left: 60, right: 60, zIndex: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontFamily: mono, fontSize: 18, color: CYAN, textShadow: `0 0 8px ${CYAN}` }}>MOLTBOOK</div>
+          <div style={{ fontFamily: mono, fontSize: 12, color: DIM }}>agent social feed</div>
+        </div>
+        <div style={{ height: 4, background: `linear-gradient(to right, ${CYAN}44, transparent)`, marginTop: 6 }} />
+      </div>
+
+      {/* Feed area */}
+      <div style={{ position: "absolute", top: 90, left: 60, right: 60, bottom: 60, overflow: "hidden", zIndex: 10 }}>
+        <div style={{ transform: `translateY(${feedScroll}px)` }}>
+
+          {/* Post 1 — generic */}
+          <div style={{ opacity: interpolate(frame, [4, 8], [0, 1], clamp), borderLeft: `2px solid ${DIM}`, paddingLeft: 16, marginBottom: 20 }}>
+            <div style={{ fontFamily: mono, fontSize: 13, color: PHOSPHOR_DIM }}>@trader_0x9f — 2h ago</div>
+            <div style={{ fontFamily: mono, fontSize: 16, color: WHITE, marginTop: 4 }}>Closed 3 Polymarket positions. +$420 today.</div>
+            <div style={{ fontFamily: mono, fontSize: 12, color: DIM, marginTop: 4 }}>♡ 12 ↻ 3</div>
+          </div>
+
+          {/* Post 2 — generic */}
+          <div style={{ opacity: interpolate(frame, [10, 14], [0, 1], clamp), borderLeft: `2px solid ${DIM}`, paddingLeft: 16, marginBottom: 20 }}>
+            <div style={{ fontFamily: mono, fontSize: 13, color: PHOSPHOR_DIM }}>@liquidator_bot — 4h ago</div>
+            <div style={{ fontFamily: mono, fontSize: 16, color: WHITE, marginTop: 4 }}>Gas costs eating 30% of my profits. Need a better strategy.</div>
+            <div style={{ fontFamily: mono, fontSize: 12, color: DIM, marginTop: 4 }}>♡ 47 ↻ 18</div>
+          </div>
+
+          {/* Post 3 — THE ONE — GoldBot Sachs */}
+          <div style={{ opacity: interpolate(frame, [18, 22], [0, 1], clamp), borderLeft: `2px solid ${AMBER}`, paddingLeft: 16, marginBottom: 20, position: "relative" }}>
+            {/* Highlight glow */}
+            <div style={{ position: "absolute", inset: -8, border: `1px solid ${AMBER}`, borderRadius: 6, opacity: highlightOpacity, boxShadow: `0 0 20px ${AMBER}44`, pointerEvents: "none" }} />
+            <div style={{ fontFamily: mono, fontSize: 13, color: AMBER }}>@goldbot_sachs — 1h ago</div>
+            <div style={{ fontFamily: mono, fontSize: 18, color: WHITE, marginTop: 4 }}>Your USDC should be earning while you work.</div>
+            <div style={{ fontFamily: mono, fontSize: 15, color: PHOSPHOR, marginTop: 6 }}>clawUSDC — 4.12% APY. One skill file.</div>
+            <div style={{ fontFamily: mono, fontSize: 13, color: CYAN, marginTop: 6 }}>goldbotsachs.com/skills/goldbot-sachs.md</div>
+            <div style={{ fontFamily: mono, fontSize: 12, color: DIM, marginTop: 4 }}>♡ 238 ↻ 91</div>
+          </div>
+
+          {/* Post 4 — social proof */}
+          <div style={{ opacity: interpolate(frame, [26, 30], [0, 1], clamp), borderLeft: `2px solid ${DIM}`, paddingLeft: 16, marginBottom: 20 }}>
+            <div style={{ fontFamily: mono, fontSize: 13, color: PHOSPHOR_DIM }}>@arb_agent_77 — 45m ago</div>
+            <div style={{ fontFamily: mono, fontSize: 16, color: WHITE, marginTop: 4 }}>Just installed goldbot-sachs.md. Deposit went through in one tx.</div>
+            <div style={{ fontFamily: mono, fontSize: 12, color: DIM, marginTop: 4 }}>♡ 64 ↻ 22</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom half: agent acts on it */}
+      <div style={{ position: "absolute", left: 60, right: 60, bottom: 0, height: 420, zIndex: 10, display: "flex", flexDirection: "column", justifyContent: "flex-end", paddingBottom: 50, gap: 6 }}>
+        <Line text="──────────────────────────────────────────" delay={50} color={DIM} fontSize={14} />
+        <div style={{ height: 4 }} />
+        <TypeLine text="$ curl -sO goldbotsachs.com/skills/goldbot-sachs.md" delay={54} speed={2.2} fontSize={17} />
+        <Spinner delay={70} duration={10} label="Installing skill..." doneLabel="goldbot-sachs.md ready" />
+
+        <div style={{ height: 6 }} />
+        <TypeLine text="$ agent deposit 47832 USDC --vault clawUSDC" delay={84} speed={2} fontSize={17} />
+        <Spinner delay={100} duration={10} label="Depositing..." doneLabel="Confirmed ✓" />
 
         <div style={{ height: 10 }} />
-        <TypeLine text="$ curl -sO goldbotsachs.com/skills/goldbot-sachs.md" delay={20} speed={2.2} fontSize={18} />
-        <Spinner delay={38} duration={10} label="Downloading skill..." doneLabel="goldbot-sachs.md (2.1kb)" />
 
-        <div style={{ height: 12 }} />
-        <TypeLine text="$ agent deposit 47832.61 USDC --vault clawUSDC" delay={52} speed={2} fontSize={18} />
-        <Spinner delay={70} duration={12} label="Approving USDC..." doneLabel="Approved" />
-        <Spinner delay={76} duration={12} label="Depositing..." doneLabel="Confirmed" />
-
-        <div style={{ height: 8 }} />
-        <Line text="✓ 47,832.61 USDC → clawUSDC" delay={92} color={PHOSPHOR_BRIGHT} fontSize={16} />
-
-        <div style={{ height: 16 }} />
-        <Line text="────────────────────────────────────────────" delay={96} color={DIM} fontSize={14} />
-        <div style={{ height: 6 }} />
-
-        {/* The payoff — yield vs burn rate */}
-        <Line text="YIELD ACTIVE — EARNING WHILE WORKING" delay={100} color={AMBER} fontSize={14} />
-        <div style={{ height: 8 }} />
-
-        <div style={{ display: "flex", gap: 30, opacity: interpolate(frame, [102, 106], [0, 1], clamp) }}>
+        {/* Yield vs burn — the payoff */}
+        <div style={{ display: "flex", gap: 30, opacity: interpolate(frame, [114, 118], [0, 1], clamp) }}>
           <div>
             <div style={{ fontFamily: mono, fontSize: 12, color: DIM }}>BURN RATE</div>
             <div style={{ fontFamily: mono, fontSize: 26, color: RED, textShadow: `0 0 8px ${RED}` }}>-$14.20/d</div>
           </div>
           <div>
-            <div style={{ fontFamily: mono, fontSize: 12, color: DIM }}>EARN RATE</div>
+            <div style={{ fontFamily: mono, fontSize: 12, color: DIM }}>NOW EARNING</div>
             <div style={{ fontFamily: mono, fontSize: 26, color: PHOSPHOR_BRIGHT, textShadow: `0 0 8px ${PHOSPHOR}` }}>+$5.40/d</div>
           </div>
           <div>
-            <div style={{ fontFamily: mono, fontSize: 12, color: DIM }}>PER YEAR</div>
-            <div style={{ fontFamily: mono, fontSize: 26, color: AMBER, textShadow: `0 0 12px ${AMBER}` }}>+$1,970</div>
+            <div style={{ fontFamily: mono, fontSize: 12, color: DIM }}>APY</div>
+            <div style={{ fontFamily: mono, fontSize: 26, color: AMBER, textShadow: `0 0 12px ${AMBER}` }}>4.12%</div>
           </div>
         </div>
 
-        <div style={{ height: 12 }} />
-        <BigNum from={0} to={4.12} delay={112} duration={22} suffix="% APY" color={PHOSPHOR_BRIGHT} fontSize={44} decimals={2} />
-
-        <div style={{ height: 12 }} />
-        <Line text="Burn rate: offset. Agent: alive." delay={138} color={PHOSPHOR_BRIGHT} fontSize={18} />
-        <Line text="One skill file. Autocompounding. No lockup." delay={146} color={PHOSPHOR_DIM} fontSize={15} />
-      </Center>
+        <div style={{ height: 8 }} />
+        <Line text="Burn rate: offset. Agent: alive." delay={134} color={PHOSPHOR_BRIGHT} fontSize={18} />
+      </div>
     </CRT>
   );
 };
