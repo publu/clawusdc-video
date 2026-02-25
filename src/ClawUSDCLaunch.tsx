@@ -88,6 +88,70 @@ const L: React.FC<{ text: string; d: number; color?: string; size?: number; glow
   return <div style={{ opacity: o, fontFamily: mono, fontSize: size, color, textShadow: glow ? `0 0 8px ${color}, 0 0 2px ${color}` : "none", lineHeight: 1.5, textAlign: center ? "center" : "left", whiteSpace: "pre" }}>{text}</div>;
 };
 
+const Art: React.FC<{ text: string; d: number; color?: string; size?: number; center?: boolean }> = ({ text, d, color = PHOSPHOR, size = 18, center = false }) => {
+  const frame = useCurrentFrame();
+  const o = interpolate(frame, [d, d + 4], [0, 1], clamp);
+  return (
+    <div style={{ opacity: o, fontFamily: mono, fontSize: size, color, textShadow: `0 0 12px ${color}, 0 0 4px ${color}`, lineHeight: 1.05, whiteSpace: "pre", textAlign: center ? "center" : "left" }}>
+      {text}
+    </div>
+  );
+};
+
+const FIG_GOLDBOT = [
+  " ██████╗  ██████╗ ██╗     ██████╗ ██████╗  ██████╗ ████████╗",
+  "██╔════╝ ██╔═══██╗██║     ██╔══██╗██╔══██╗██╔═══██╗╚══██╔══╝",
+  "██║  ███╗██║   ██║██║     ██║  ██║██████╔╝██║   ██║   ██║   ",
+  "██║   ██║██║   ██║██║     ██║  ██║██╔══██╗██║   ██║   ██║   ",
+  "╚██████╔╝╚██████╔╝███████╗██████╔╝██████╔╝╚██████╔╝   ██║   ",
+  " ╚═════╝  ╚═════╝ ╚══════╝╚═════╝ ╚═════╝  ╚═════╝    ╚═╝   ",
+].join("\n");
+
+const FIG_SACHS = [
+  "███████╗ █████╗  ██████╗██╗  ██╗███████╗",
+  "██╔════╝██╔══██╗██╔════╝██║  ██║██╔════╝",
+  "███████╗███████║██║     ███████║███████╗",
+  "╚════██║██╔══██║██║     ██╔══██║╚════██║",
+  "███████║██║  ██║╚██████╗██║  ██║███████║",
+  "╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚══════╝",
+].join("\n");
+
+const FIG_MORPHO = [
+  "███╗   ███╗ ██████╗ ██████╗ ██████╗ ██╗  ██╗ ██████╗ ",
+  "████╗ ████║██╔═══██╗██╔══██╗██╔══██╗██║  ██║██╔═══██╗",
+  "██╔████╔██║██║   ██║██████╔╝██████╔╝███████║██║   ██║",
+  "██║╚██╔╝██║██║   ██║██╔══██╗██╔═══╝ ██╔══██║██║   ██║",
+  "██║ ╚═╝ ██║╚██████╔╝██║  ██║██║     ██║  ██║╚██████╔╝",
+  "╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝ ",
+].join("\n");
+
+const FIG_BEEFY = [
+  "██████╗ ███████╗███████╗███████╗██╗   ██╗",
+  "██╔══██╗██╔════╝██╔════╝██╔════╝╚██╗ ██╔╝",
+  "██████╔╝█████╗  █████╗  █████╗   ╚████╔╝ ",
+  "██╔══██╗██╔══╝  ██╔══╝  ██╔══╝    ╚██╔╝  ",
+  "██████╔╝███████╗███████╗██║        ██║   ",
+  "╚═════╝ ╚══════╝╚══════╝╚═╝        ╚═╝   ",
+].join("\n");
+
+const FIG_COWSWAP = [
+  " ██████╗ ██████╗ ██╗    ██╗    ███████╗██╗    ██╗ █████╗ ██████╗ ",
+  "██╔════╝██╔═══██╗██║    ██║    ██╔════╝██║    ██║██╔══██╗██╔══██╗",
+  "██║     ██║   ██║██║ █╗ ██║    ███████╗██║ █╗ ██║███████║██████╔╝",
+  "██║     ██║   ██║██║███╗██║    ╚════██║██║███╗██║██╔══██║██╔═══╝ ",
+  "╚██████╗╚██████╔╝╚███╔███╔╝    ███████║╚███╔███╔╝██║  ██║██║     ",
+  " ╚═════╝ ╚═════╝  ╚══╝╚══╝     ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝     ",
+].join("\n");
+
+const FIG_DEFILLAMA = [
+  "██████╗ ███████╗███████╗██╗██╗     ██╗      █████╗ ███╗   ███╗ █████╗ ",
+  "██╔══██╗██╔════╝██╔════╝██║██║     ██║     ██╔══██╗████╗ ████║██╔══██╗",
+  "██║  ██║█████╗  █████╗  ██║██║     ██║     ███████║██╔████╔██║███████║",
+  "██║  ██║██╔══╝  ██╔══╝  ██║██║     ██║     ██╔══██║██║╚██╔╝██║██╔══██║",
+  "██████╔╝███████╗██║     ██║███████╗███████╗██║  ██║██║ ╚═╝ ██║██║  ██║",
+  "╚═════╝ ╚══════╝╚═╝     ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝",
+].join("\n");
+
 const Spin: React.FC<{ d: number; dur: number; label: string; done?: string }> = ({ d, dur, label, done }) => {
   const frame = useCurrentFrame();
   const o = interpolate(frame, [d, d + 1], [0, 1], clamp);
@@ -146,12 +210,9 @@ const SceneBoot: React.FC = () => {
       <div style={{ position: "absolute", inset: 0, backgroundColor: PHOSPHOR, opacity: flash, zIndex: 50 }} />
       <MatrixRain delay={0} duration={65} density={20} />
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 12, padding: P }}>
-        <L text="╔══════════════════════════════════════════╗" d={4} color={DIM} size={28} center />
-        <L text="║                                          ║" d={4} color={DIM} size={28} center />
-        <L text="║  G O L D B O T   S A C H S   v1.0  ║" d={6} color={AMBER} size={28} center />
-        <L text="║  Yield infrastructure for AI agents  ║" d={8} color={AMBER_DIM} size={28} center />
-        <L text="║                                          ║" d={4} color={DIM} size={28} center />
-        <L text="╚══════════════════════════════════════════╝" d={10} color={DIM} size={28} center />
+        <Art text={FIG_GOLDBOT} d={4} color={AMBER} size={18} center />
+        <Art text={FIG_SACHS} d={6} color={AMBER} size={16} center />
+        <L text="v1.0 — Yield infrastructure for AI agents" d={10} color={AMBER_DIM} size={15} center />
         <Pad h={20} />
         <Spin d={16} dur={12} label="Connecting to Base..." done="Base (8453)" />
         <Spin d={20} dur={12} label="Loading vault..." done="clawUSDC ready" />
@@ -217,7 +278,7 @@ const SceneBurn: React.FC = () => {
           <span style={{ color: DIM }}>│  </span>
           <span style={{ color: balColor, textShadow: `0 0 8px ${balColor}` }}>${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC</span>
           <span style={{ color: DIM }}>{"            ".slice(0, 14)}</span>
-          <span style={{ color: RED }}>↓ draining</span>
+          <span style={{ color: RED }}>↓ spending</span>
           <span style={{ color: DIM }}> │</span>
         </div>
         <L text="│  BURN: -$14.20/day                            │" d={68} color={RED} size={16} />
@@ -302,10 +363,8 @@ const SceneMorpho: React.FC = () => {
         <T text="$ morpho-cli --chain base" d={0} speed={2.5} size={16} />
         <Spin d={12} dur={12} label="Connecting to Morpho Blue..." done="Connected — Base (8453)" />
         <Pad h={6} />
-        <L text="╭──────────────────────────────────────────────╮" d={26} color={PURPLE} size={16} />
-        <L text="│  M O R P H O   B L U E                      │" d={28} color={PURPLE} size={16} />
-        <L text="│  Permissionless Lending Protocol             │" d={30} color={DIM} size={16} />
-        <L text="╰──────────────────────────────────────────────╯" d={32} color={PURPLE} size={16} />
+        <Art text={FIG_MORPHO} d={26} color={PURPLE} size={15} />
+        <L text="  Permissionless Lending Protocol" d={30} color={DIM} size={14} />
         <Pad h={6} />
         <T text="morpho> pools" d={38} speed={2} color={PURPLE} size={16} />
         <Pad h={4} />
@@ -351,10 +410,8 @@ const SceneDefiLlama: React.FC = () => {
         <T text="$ defillama-cli" d={0} speed={2.5} size={16} />
         <Spin d={8} dur={10} label="Loading yield data..." done="Connected" />
         <Pad h={6} />
-        <L text="╭──────────────────────────────────────────────╮" d={20} color={CYAN} size={16} />
-        <L text="│  D E F I   L L A M A                        │" d={22} color={CYAN} size={16} />
-        <L text="│  DeFi TVL & Yield Aggregator                │" d={24} color={DIM} size={16} />
-        <L text="╰──────────────────────────────────────────────╯" d={26} color={CYAN} size={16} />
+        <Art text={FIG_DEFILLAMA} d={20} color={CYAN} size={13} />
+        <L text="  DeFi TVL & Yield Aggregator" d={24} color={DIM} size={14} />
         <Pad h={6} />
         <T text="defillama> yields --token USDC --chain base --sort apy" d={32} speed={2.5} color={CYAN} size={15} />
         <Spin d={48} dur={10} label="Querying 847 vaults..." done="5 results" />
@@ -398,10 +455,8 @@ const SceneBeefy: React.FC = () => {
         <T text="$ beefy-cli" d={0} speed={2.5} size={16} />
         <Spin d={8} dur={10} label="Loading vaults..." done="Connected to Beefy Finance" />
         <Pad h={6} />
-        <L text="╭──────────────────────────────────────────────╮" d={20} color={GREEN} size={16} />
-        <L text="│  B E E F Y   F I N A N C E                  │" d={22} color={GREEN} size={16} />
-        <L text="│  Multichain Yield Optimizer                  │" d={24} color={DIM} size={16} />
-        <L text="╰──────────────────────────────────────────────╯" d={26} color={GREEN} size={16} />
+        <Art text={FIG_BEEFY} d={20} color={GREEN} size={16} />
+        <L text="  Multichain Yield Optimizer" d={24} color={DIM} size={14} />
         <Pad h={6} />
         <T text="beefy> vault morpho-usdc-base" d={32} speed={2} color={GREEN} size={16} />
         <Spin d={44} dur={10} label="Fetching vault..." done="moo-morpho-usdc" />
@@ -445,14 +500,9 @@ const SceneGoldbot: React.FC = () => {
         <Pad h={8} />
 
         {/* Welcome banner */}
-        <L text="╔══════════════════════════════════════════════╗" d={20} color={AMBER} size={17} />
-        <L text="║                                              ║" d={20} color={AMBER} size={17} />
-        <L text="║   W E L C O M E   T O                       ║" d={24} color={AMBER_DIM} size={17} />
-        <L text="║   G O L D B O T   S A C H S                 ║" d={28} color={AMBER} size={17} />
-        <L text="║                                              ║" d={28} color={AMBER} size={17} />
-        <L text="║   Banking for AI Agents                      ║" d={32} color={WHITE} size={17} />
-        <L text="║                                              ║" d={32} color={AMBER} size={17} />
-        <L text="╚══════════════════════════════════════════════╝" d={36} color={AMBER} size={17} />
+        <Art text={FIG_GOLDBOT} d={20} color={AMBER} size={16} />
+        <Art text={FIG_SACHS} d={26} color={AMBER} size={14} />
+        <L text="  Banking for AI Agents" d={32} color={WHITE} size={16} />
 
         <Pad h={8} />
         <T text="goldbot> vaults" d={44} speed={2} color={AMBER} size={16} />
@@ -487,10 +537,8 @@ const SceneCow: React.FC = () => {
         <T text="$ cow-cli" d={0} speed={2.5} size={16} />
         <Spin d={6} dur={8} label="Loading..." done="CoW Protocol ready" />
         <Pad h={6} />
-        <L text="╭──────────────────────────────────────────────╮" d={16} color={"#8b5cf6"} size={16} />
-        <L text="│  C O W   S W A P                            │" d={18} color={"#8b5cf6"} size={16} />
-        <L text="│  Intent-Based DEX — Gasless Swaps            │" d={20} color={DIM} size={16} />
-        <L text="╰──────────────────────────────────────────────╯" d={22} color={"#8b5cf6"} size={16} />
+        <Art text={FIG_COWSWAP} d={16} color={"#8b5cf6"} size={14} />
+        <L text="  Intent-Based DEX — Gasless Swaps" d={20} color={DIM} size={14} />
         <Pad h={6} />
 
         <T text="cow> swap 10 USDC ETH --gasless" d={28} speed={2} color={"#8b5cf6"} size={16} />
