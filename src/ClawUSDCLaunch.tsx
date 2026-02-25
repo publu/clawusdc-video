@@ -152,6 +152,66 @@ const FIG_DEFILLAMA = [
   "╚═════╝ ╚══════╝╚═╝     ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝",
 ].join("\n");
 
+// ─── Subtitles (global frame timing) ────────────────
+const SUBS: { s: number; e: number; text: string }[] = [
+  { s: 75, e: 165, text: "Your agent never sleeps." },
+  { s: 165, e: 255, text: "Polymarket. DeFi. Three thousand calls an hour." },
+  { s: 270, e: 380, text: "Three twenty a day. The meter never stops." },
+  { s: 395, e: 490, text: "Compute. Gas. API keys." },
+  { s: 505, e: 590, text: "Every cycle costs money." },
+  { s: 600, e: 690, text: "Forty-seven thousand in stablecoins." },
+  { s: 700, e: 790, text: "Sitting there. Earning nothing." },
+  // silence during protocol exploration
+  { s: 930, e: 1030, text: "The yield infrastructure exists." },
+  { s: 1040, e: 1140, text: "Your agent just doesn't speak it." },
+  { s: 1150, e: 1240, text: "One transaction. Idle USDC becomes clawUSDC." },
+  { s: 1250, e: 1330, text: "Four percent. Compounding." },
+  { s: 1340, e: 1420, text: "DeFi summer never ended." },
+  { s: 1430, e: 1500, text: "Your agent just joined." },
+  { s: 1510, e: 1570, text: "Thirty days. Burns covered." },
+  { s: 1575, e: 1620, text: "Self-sustaining." },
+  { s: 1625, e: 1665, text: "GoldBot Sachs. Banking for agents." },
+];
+
+const SubtitleTrack: React.FC = () => {
+  const frame = useCurrentFrame();
+  const active = SUBS.find((c) => frame >= c.s && frame < c.e);
+  if (!active) return null;
+  const fadeIn = interpolate(frame, [active.s, active.s + 4], [0, 1], clamp);
+  const fadeOut = interpolate(frame, [active.e - 4, active.e], [1, 0], clamp);
+  return (
+    <div
+      style={{
+        position: "absolute",
+        bottom: 55,
+        left: 40,
+        right: 40,
+        zIndex: 100,
+        display: "flex",
+        justifyContent: "center",
+        opacity: Math.min(fadeIn, fadeOut),
+      }}
+    >
+      <div
+        style={{
+          fontFamily: mono,
+          fontSize: 22,
+          color: "#fff",
+          backgroundColor: "rgba(0, 0, 0, 0.72)",
+          padding: "10px 28px",
+          borderRadius: 6,
+          textAlign: "center",
+          textShadow: "0 1px 4px rgba(0,0,0,0.8)",
+          maxWidth: 920,
+          letterSpacing: 0.3,
+        }}
+      >
+        {active.text}
+      </div>
+    </div>
+  );
+};
+
 const Spin: React.FC<{ d: number; dur: number; label: string; done?: string }> = ({ d, dur, label, done }) => {
   const frame = useCurrentFrame();
   const o = interpolate(frame, [d, d + 1], [0, 1], clamp);
@@ -711,28 +771,31 @@ const SceneCTA: React.FC = () => {
 export const ClawUSDCLaunch: React.FC = () => {
   const t = <TransitionSeries.Transition presentation={fade()} timing={linearTiming({ durationInFrames: 8 })} />;
   return (
-    <TransitionSeries>
-      <TransitionSeries.Sequence durationInFrames={75}><SceneBoot /></TransitionSeries.Sequence>
-      {t}
-      <TransitionSeries.Sequence durationInFrames={180}><SceneBurn /></TransitionSeries.Sequence>
-      {t}
-      <TransitionSeries.Sequence durationInFrames={120}><SceneMoltbook /></TransitionSeries.Sequence>
-      {t}
-      <TransitionSeries.Sequence durationInFrames={200}><SceneMorpho /></TransitionSeries.Sequence>
-      {t}
-      <TransitionSeries.Sequence durationInFrames={180}><SceneDefiLlama /></TransitionSeries.Sequence>
-      {t}
-      <TransitionSeries.Sequence durationInFrames={180}><SceneBeefy /></TransitionSeries.Sequence>
-      {t}
-      <TransitionSeries.Sequence durationInFrames={180}><SceneGoldbot /></TransitionSeries.Sequence>
-      {t}
-      <TransitionSeries.Sequence durationInFrames={165}><SceneCow /></TransitionSeries.Sequence>
-      {t}
-      <TransitionSeries.Sequence durationInFrames={150}><SceneDeposit /></TransitionSeries.Sequence>
-      {t}
-      <TransitionSeries.Sequence durationInFrames={195}><SceneYield /></TransitionSeries.Sequence>
-      {t}
-      <TransitionSeries.Sequence durationInFrames={120}><SceneCTA /></TransitionSeries.Sequence>
-    </TransitionSeries>
+    <AbsoluteFill>
+      <TransitionSeries>
+        <TransitionSeries.Sequence durationInFrames={75}><SceneBoot /></TransitionSeries.Sequence>
+        {t}
+        <TransitionSeries.Sequence durationInFrames={180}><SceneBurn /></TransitionSeries.Sequence>
+        {t}
+        <TransitionSeries.Sequence durationInFrames={120}><SceneMoltbook /></TransitionSeries.Sequence>
+        {t}
+        <TransitionSeries.Sequence durationInFrames={200}><SceneMorpho /></TransitionSeries.Sequence>
+        {t}
+        <TransitionSeries.Sequence durationInFrames={180}><SceneDefiLlama /></TransitionSeries.Sequence>
+        {t}
+        <TransitionSeries.Sequence durationInFrames={180}><SceneBeefy /></TransitionSeries.Sequence>
+        {t}
+        <TransitionSeries.Sequence durationInFrames={180}><SceneGoldbot /></TransitionSeries.Sequence>
+        {t}
+        <TransitionSeries.Sequence durationInFrames={165}><SceneCow /></TransitionSeries.Sequence>
+        {t}
+        <TransitionSeries.Sequence durationInFrames={150}><SceneDeposit /></TransitionSeries.Sequence>
+        {t}
+        <TransitionSeries.Sequence durationInFrames={195}><SceneYield /></TransitionSeries.Sequence>
+        {t}
+        <TransitionSeries.Sequence durationInFrames={120}><SceneCTA /></TransitionSeries.Sequence>
+      </TransitionSeries>
+      <SubtitleTrack />
+    </AbsoluteFill>
   );
 };
