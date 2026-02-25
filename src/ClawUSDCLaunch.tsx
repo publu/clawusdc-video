@@ -194,10 +194,10 @@ const SubtitleTrack: React.FC = () => {
       <div
         style={{
           fontFamily: mono,
-          fontSize: 22,
+          fontSize: 32,
           color: "#fff",
-          backgroundColor: "rgba(0, 0, 0, 0.72)",
-          padding: "10px 28px",
+          backgroundColor: "rgba(0, 0, 0, 0.75)",
+          padding: "14px 36px",
           borderRadius: 6,
           textAlign: "center",
           textShadow: "0 1px 4px rgba(0,0,0,0.8)",
