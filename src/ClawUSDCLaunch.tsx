@@ -154,21 +154,20 @@ const FIG_DEFILLAMA = [
 
 // ─── Subtitles (global frame timing) ────────────────
 const SUBS: { s: number; e: number; text: string }[] = [
-  { s: 75, e: 165, text: "Your agent never sleeps." },
-  { s: 165, e: 255, text: "Polymarket. DeFi. Three thousand calls an hour." },
-  { s: 270, e: 380, text: "Three twenty a day. The meter never stops." },
-  { s: 395, e: 490, text: "Compute. Gas. API keys." },
-  { s: 505, e: 590, text: "Every cycle costs money." },
-  { s: 600, e: 690, text: "Forty-seven thousand in stablecoins." },
-  { s: 700, e: 790, text: "Sitting there. Earning nothing." },
+  { s: 75, e: 165, text: "Always on. Never idle." },
+  { s: 165, e: 255, text: "Polymarket. Aave. Three thousand calls an hour." },
+  { s: 270, e: 380, text: "$3.20 a day to keep it running." },
+  { s: 395, e: 490, text: "Compute. Gas. API calls. It adds up." },
+  { s: 600, e: 690, text: "Meanwhile — $47,000 in stablecoins." },
+  { s: 700, e: 790, text: "Sitting in a wallet. Earning zero." },
   // silence during protocol exploration
-  { s: 930, e: 1030, text: "The yield infrastructure exists." },
-  { s: 1040, e: 1140, text: "Your agent just doesn't speak it." },
-  { s: 1150, e: 1240, text: "One transaction. Idle USDC becomes clawUSDC." },
-  { s: 1250, e: 1330, text: "Four percent. Compounding." },
+  { s: 930, e: 1030, text: "Morpho. Beefy. The yield infrastructure is already here." },
+  { s: 1040, e: 1140, text: "Your agent just never had access." },
+  { s: 1150, e: 1240, text: "One transaction. USDC in. clawUSDC out." },
+  { s: 1250, e: 1330, text: "4.12% APY. Compounding. No human required." },
   { s: 1340, e: 1420, text: "DeFi summer never ended." },
-  { s: 1430, e: 1500, text: "Your agent just joined." },
-  { s: 1510, e: 1570, text: "Thirty days. Burns covered." },
+  { s: 1430, e: 1500, text: "Your agent just showed up." },
+  { s: 1510, e: 1570, text: "Thirty days. Burns covered. Net positive." },
   { s: 1575, e: 1620, text: "Self-sustaining." },
   { s: 1625, e: 1665, text: "GoldBot Sachs. Banking for agents." },
 ];
